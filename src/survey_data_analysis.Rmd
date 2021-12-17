@@ -1,0 +1,181 @@
+---
+title: "KelpWanted- Survey Data Analysis"
+author: "Sydney Rilum"
+date: "12/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load necessary packages
+library(tidyverse)
+library(here)
+library(janitor)
+library(ggwordcloud) # create wordcloud plots
+library(patchwork)   # for stacking plots
+```
+
+## Data Set-up & Cleaning
+
+```{r}
+# Read in the data
+survey_data <- read.csv(here("data","QRcode_20211215_choice_text.csv"))
+
+# If needed for analysis...
+#survey_data_numeric <- read.csv(here("data","QRcode_20211215_numeric_values.csv"))
+```
+
+```{r}
+# Clean up dataframe
+survey_data_tidy <- survey_data %>%
+  clean_names() %>% 
+  slice(-(1:3)) %>% # remove first 3 rows of df
+  select(-recipient_last_name, # remove empty/unnecessary columns
+         -recipient_first_name,
+         -recipient_email,
+         -external_reference,
+         -distribution_channel,
+         -user_language,
+         -status,
+         -progress,
+         -finished)
+```
+
+```{r}
+# Check class
+class(survey_data_tidy$duration_in_seconds) # character
+
+# Convert class from character to numeric
+survey_data_tidy$duration_in_seconds = as.numeric(survey_data_tidy$duration_in_seconds)
+
+# Calculate average time (seconds) spent taking survey
+mean(survey_data_tidy$duration_in_seconds)
+
+```
+
+## Zipcode Analysis
+
+```{r}
+# q41 - Zipcode
+unique(survey_data_tidy$q41)
+
+# remove non-CA zipcode responses
+
+
+# Make a map of survey response zipcodes
+
+
+```
+
+
+
+
+
+## Word Clouds
+
+```{r}
+# Word Cloud data cleaning
+
+# convert each string of words to lowercase
+survey_data_tidy$q3 <- tolower(survey_data_tidy$q3)  # seaweed farming
+survey_data_tidy$q5 <- tolower(survey_data_tidy$q5)  # kelp farming
+survey_data_tidy$q7 <- tolower(survey_data_tidy$q7)  # seaweed aquaculture
+survey_data_tidy$q9 <- tolower(survey_data_tidy$q9)  # seaweed farming
+```
+
+```{r}
+# q3 - seaweed farming
+seaweed_farming <- survey_data_tidy %>% 
+  select(q3) %>%
+  mutate(q3 = str_trim(q3)) %>%  # remove excess whitespace before/after word
+  count(q3) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_seaweed_farming <- ggplot(data = seaweed_farming, 
+                                    aes(label = q3)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("burlywood4", "green")) +
+  theme_minimal() +
+  labs(y = "seaweed") +
+  theme(axis.line.y = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# q5 - kelp farming
+kelp_farming <- survey_data_tidy %>% 
+  select(q5) %>%
+  mutate(q5 = str_trim(q5)) %>%  # remove excess whitespace before/after word
+  count(q5) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_kelp_farming <- ggplot(data = kelp_farming, 
+                                    aes(label = q5)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("darkgreen", "green")) +
+  theme_minimal() +
+  labs(y = "kelp",
+       x = "farming") +
+  theme(axis.line.x = element_line(color="black", size = 0.1),
+        axis.line.y = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# q7 - seaweed aquaculture
+seaweed_aquaculture <- survey_data_tidy %>% 
+  select(q7) %>%
+  mutate(q7 = str_trim(q7)) %>%  # remove excess whitespace before/after word
+  count(q7) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_seaweed_aquaculture <- ggplot(data = seaweed_aquaculture, 
+                                    aes(label = q7)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("springgreen4", "green")) +
+  theme_minimal()
+```
+
+```{r}
+# q9 - kelp aquaculture
+kelp_aquaculture <- survey_data_tidy %>% 
+  select(q9) %>%
+  mutate(q9 = str_trim(q9)) %>%  # remove excess whitespace before/after word
+  count(q9) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_kelp_aquaculture <- ggplot(data = kelp_aquaculture, 
+                                    aes(label = q9)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("yellow4", "green")) +
+  theme_minimal() +
+  labs(x = "aquaculture") +
+  theme(axis.line.x = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# stack word cloud plots using `patchwork` 
+wordclouds <- ((wordcloud_seaweed_farming + wordcloud_seaweed_aquaculture) /
+                 (wordcloud_kelp_farming + wordcloud_kelp_aquaculture))
+
+wordclouds +
+  plot_annotation(title = "When you think of _____  _____, what word comes to mind?") &
+  theme(plot.title = element_text(size = 12))
+
+```
+
+
+
+
+
+
