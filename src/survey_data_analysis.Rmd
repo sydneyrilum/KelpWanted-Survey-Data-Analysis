@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(janitor)
+library(sf)          # read in shapefiles
+library(tmap)        # interactive maps
 library(ggwordcloud) # create wordcloud plots
 library(patchwork)   # for stacking plots
 ```
@@ -18,27 +20,37 @@ library(patchwork)   # for stacking plots
 ## Data Set-up & Cleaning
 
 ```{r}
-# Read in the data
-survey_data <- read.csv(here("data","QRcode_20211215_choice_text.csv"))
+# Read in combined survey data
+survey_data <- read.csv(here("data","survey_data","combined_survey_responses.csv"))
 
-# If needed for analysis...
-#survey_data_numeric <- read.csv(here("data","QRcode_20211215_numeric_values.csv"))
+# Read in the Qualtrics Survey data
+survey_data_qualtrics <- read.csv(here("data","survey_data","qualtrics_survey_responses_final.csv"))
+
+# Read in the QR code Survey data
+survey_data_qrcode <- read.csv(here("data","survey_data","QRcode_choice_text_January13,2022.csv"))
+
 ```
 
 ```{r}
-# Clean up dataframe
+# Clean up dataframes
 survey_data_tidy <- survey_data %>%
   clean_names() %>% 
-  slice(-(1:3)) %>% # remove first 3 rows of df
+  slice(-1) # remove first row of df
+
+survey_data_qualtrics_tidy <- survey_data_qualtrics %>%
+  clean_names() %>% 
+  slice(-1) # remove first row of df
+
+survey_data_qrcode_tidy <- survey_data_qrcode %>%
+  clean_names() %>% 
+  slice(-(1:2)) %>% # remove first 2 rows of df
   select(-recipient_last_name, # remove empty/unnecessary columns
          -recipient_first_name,
          -recipient_email,
          -external_reference,
          -distribution_channel,
          -user_language,
-         -status,
-         -progress,
-         -finished)
+         -status)
 ```
 
 ```{r}
@@ -56,8 +68,8 @@ mean(survey_data_tidy$duration_in_seconds)
 ## Zipcode Analysis
 
 ```{r}
-# q41 - Zipcode
-unique(survey_data_tidy$q41)
+# q37 - Zipcode
+unique(survey_data_tidy$q37)
 
 # remove non-CA zipcode responses
 
@@ -68,7 +80,50 @@ unique(survey_data_tidy$q41)
 ```
 
 
+```{r}
+# Read in California counties outline
+ca_counties <- read_sf(here("data", "ca_counties", "CA_Counties_TIGER2016.shp")) %>% 
+  clean_names()
 
+# Read in US zipcodes tabulation areas
+us_zipcodes <- read_sf(here("data", "zipcode_tabulation_areas_2020", "tl_2021_us_zcta520.shp")) %>% 
+  clean_names()
+
+```
+
+```{r}
+us_zipcodes <- drop_na(us_zipcodes)
+
+# Check class
+class(us_zipcodes$ztca5ce20) # character
+```
+
+
+```{r}
+# Crop US zipcodes data frame to include only CA zipcodes
+#ca_zipcodes <- us_zipcodes %>% 
+#  filter(ztca5ce20 > 90000,
+#         ztca5ce20 < 95000)
+```
+
+
+```{r}
+# Check CRS (Coordinate Reference System)
+st_crs(ca_counties) # WGS 84
+st_crs(us_zipcodes) # NA
+```
+
+
+```{r}
+# Set tmap viewing mode to interactive
+#tmap_mode("view") 
+
+# Make an interactive map
+#tm_shape(ca_zipcodes) +
+#  tm_borders()
+#  tm_shape(oil_spill) +
+#  tm_dots(col = "sienna2")
+```
 
 
 ## Word Clouds
@@ -174,8 +229,46 @@ wordclouds +
 
 ```
 
+## Demographics
+
+```{r}
+## Exploratory Plots
+
+# Birth Year (Q31)
+ggplot(data = survey_data_tidy, aes(y = q31)) +
+  geom_bar()
+### need to remove SB and NJ words from years
+
+# Gender Identity (Q32)
+ggplot(data = survey_data_tidy, aes(x = q32)) +
+  geom_bar()
+
+# Race/ethnicity (Q33)
+ggplot(data = survey_data_tidy, aes(y = q33)) +
+  geom_bar()
+### how to deal with people selecting more than one option ????
+
+# Highest level of education (Q34)
+ggplot(data = survey_data_tidy, aes(y = q34)) +
+  geom_bar()
+
+# Annual household income (Q35)
+ggplot(data = survey_data_tidy, aes(y = q35)) +
+  geom_bar()
+
+# Political Affiliation (Q38)
+ggplot(data = survey_data_tidy, aes(y = q38)) +
+  geom_bar()
 
 
+```
+
+
+## Citations:
+
+California county boundaries layer: [US Census Bureau's 2016 MAF/TIGER database.](https://data.ca.gov/dataset/ca-geographic-boundaries)
+
+California ZIP code tabulations areas layer: [US Census Bureau's 2020 TIGER/Line Shapefiles database.](https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2021&layergroup=ZIP+Code+Tabulation+Areas)
 
 
 
