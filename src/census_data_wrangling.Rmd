@@ -1,0 +1,126 @@
+---
+title: "Census Data Wrangling"
+author: "Janelle Gaun"
+date: "1/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(data.table)
+library(dplyr)
+library(fuzzyjoin)
+library(stringr)
+```
+
+
+```{r}
+sb_dems <- read.csv(here("data", "census", "sb", "dem", "sb_dp05_gen_race_age_sexratio.csv")) 
+sb_income <- read.csv(here("data", "census", "sb", "household income", "sb_dp03_hh_income.csv"))
+ven_dems <- read.csv(here("data", "census", "ven", "dem", "ven_dp05_gen_age_race_sexratio.csv"))
+ven_income <- read.csv(here("data", "census", "ven", "household income", "ven_dp03_hh_income.csv"))
+``` 
+
+The data are 2019 estimates of sex, age, race, and gender ratio. The data frame includes both estimates and margin of error.  We remove the column containing margin of error for analysis. 
+
+```{r}
+#use 'baseR:grepl()' to remove columns with "M" in the name. Estimates are indicated by the letter 'E' in the name of the column and then transpose using 'baseR:t()'
+
+#santa barbara
+  #demographic information 
+sb_dems_c <- sb_dems[,grepl("E", colnames(sb_dems))] #exclude the margin of error
+     #create a dataframe for each percent and variable
+sb_dems_pct <- sb_dems_c[,grepl("PE", colnames(sb_dems_c))] #select only percent of each variable 
+sb_d_pct <- data.frame(t(sb_dems_pct[-1]))%>% 
+  rename(indicator = X1, 
+         sb_pct = X2) #transpose dataframe
+
+sb_dems_tot <- sb_dems_c[,!grepl("PE", colnames(sb_dems_c))]#select only percent of each variable 
+sb_d_tot <- data.frame(t(sb_dems_tot[-1]))%>% 
+  rename(indicator = X1, 
+         sb_tot = X2) %>% 
+  slice(-c(89,90))
+
+
+  #income
+sb_income_c <- sb_income[,grepl("E", colnames(sb_income))]  
+
+#create a df for percent and variable
+sb_income_pct <- sb_income_c[,grepl("PE", colnames(sb_income_c))]
+sb_i_pct <- data.frame(t(sb_dems_pct[-1])) %>% 
+  rename(indicator = X1, 
+         sb_pct = X2)
+
+sb_income_tot <- sb_income_c[,!grepl("PE", colnames(sb_income_c))]
+sb_i_tot<- data.frame(t(sb_dems_tot[-1]))%>% 
+  rename(indicator = X1, 
+         sb_tot = X2) %>% 
+  slice(-c(89,90))
+
+#ventura 
+ #demographic information 
+ven_dems_c <- ven_dems[,grepl("E", colnames(ven_dems))] #exclude the margin of error
+     #create a dataframe for each percent and variable
+ven_dems_pct <- ven_dems_c[,grepl("PE", colnames(ven_dems_c))] #select only percent of each variable 
+ven_d_pct <- data.frame(t(ven_dems_pct[-1])) %>% #transpose dataframe
+rename(indicator = X1, 
+         ven_pct = X2)
+
+ven_dems_tot <- ven_dems_c[,!grepl("PE", colnames(ven_dems_c))]#select only percent of each variable 
+ven_d_tot <- data.frame(t(ven_dems_pct[-1])) %>%   #transpose dataframe
+rename(indicator = X1, 
+         ven_tot = X2)
+
+  #income
+ven_income_c <- ven_income[,grepl("E", colnames(ven_income))] 
+    #create a df for percent and variable
+ven_income_pct <- ven_income_c[,grepl("PE", colnames(ven_income_c))]
+ven_i_pct <- data.frame(t(ven_dems_pct[-1])) %>% 
+  rename(indicator = X1, 
+         ven_pct = X2)
+
+ven_income_tot <- ven_income_c[,!grepl("PE", colnames(ven_income_c))]
+ven_i_tot<- data.frame(t(ven_dems_pct[-1])) %>% 
+  rename(indicator = X1, 
+         ven_tot = X2)
+
+```
+
+
+```{r}
+#create a dataframe that combines all the values of percent and total using common 
+demographics <- sb_d_pct %>% 
+  mutate(sb_tot = sb_d_tot$sb_tot,
+         sb_pct = sb_d_pct$sb_pct,
+         ven_tot = ven_d_tot$ven_tot,
+         ven_pct = ven_d_pct$ven_pct)
+
+income <- sb_i_pct %>% 
+    mutate(sb_tot = sb_i_tot$sb_tot,
+         sb_pct = sb_i_pct$sb_pct,
+         ven_tot = ven_i_tot$ven_tot,
+         ven_pct = ven_i_pct$ven_pct)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
