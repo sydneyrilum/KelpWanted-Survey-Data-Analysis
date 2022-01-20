@@ -69,9 +69,10 @@ rename(indicator = X1,
          ven_pct = X2)
 
 ven_dems_tot <- ven_dems_c[,!grepl("PE", colnames(ven_dems_c))]#select only percent of each variable 
-ven_d_tot <- data.frame(t(ven_dems_pct[-1])) %>%   #transpose dataframe
+ven_d_tot <- data.frame(t(ven_dems_tot[-1])) %>%   #transpose dataframe
 rename(indicator = X1, 
-         ven_tot = X2)
+         ven_tot = X2) %>% 
+  slice(-c(89,90))
 
   #income
 ven_income_c <- ven_income[,grepl("E", colnames(ven_income))] 
@@ -82,9 +83,10 @@ ven_i_pct <- data.frame(t(ven_dems_pct[-1])) %>%
          ven_pct = X2)
 
 ven_income_tot <- ven_income_c[,!grepl("PE", colnames(ven_income_c))]
-ven_i_tot<- data.frame(t(ven_dems_pct[-1])) %>% 
+ven_i_tot<- data.frame(t(ven_dems_tot[-1])) %>% 
   rename(indicator = X1, 
-         ven_tot = X2)
+         ven_tot = X2) %>% 
+  slice(-c(89,90))
 
 ```
 
