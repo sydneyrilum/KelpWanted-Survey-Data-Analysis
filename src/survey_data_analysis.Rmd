@@ -11,10 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(janitor)
+library(naniar)      # replace NA tools
 library(sf)          # read in shapefiles
 library(tmap)        # interactive maps
 library(ggwordcloud) # create wordcloud plots
 library(patchwork)   # for stacking plots
+library(data.table)
 ```
 
 ## Data Set-up & Cleaning
@@ -64,6 +66,48 @@ survey_data_tidy$duration_in_seconds = as.numeric(survey_data_tidy$duration_in_s
 mean(survey_data_tidy$duration_in_seconds)
 
 ```
+
+
+```{r}
+# Converting dataframe to tidydata format (Reshaping the data)
+
+# convert data.frame to a tibble (IS THIS REQUIRED?????)
+#survey_data_tidy_too <- as_tibble(survey_data_tidy)
+
+# use pivot_longer() to reshape from wide to long format
+survey_data_tidy_too <- survey_data_tidy %>% 
+  pivot_longer(c(q12, q13), 
+               names_to = "question", 
+               values_to = "answer") %>% 
+  select(response_id, response_type, question, answer)
+
+
+#### IDEAS.......
+
+### split data into 2 data frames, one numerical answers, one character answers
+# create tibble for each, then pivot_longer
+
+# break the dataframe into two data frames (one for numerical data, one for categorical), pivot them and then join them
+# https://stackoverflow.com/questions/63994970/pivot-longer-multiple-variables-of-different-kinds
+
+# ORRRRRRR ........
+
+## Use advanced `datatable` package
+
+# convert data frame into a data table
+survey_data_tidy_too_2 <- as.data.table(survey_data_tidy)
+
+survey_data_tidy_too_2 <- survey_data_tidy_too_2 %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer") %>% 
+  filter(question == "q11_4")
+
+head(survey_data_tidy_too_2)
+```
+
+
+
 
 ## Zipcode Analysis
 
@@ -277,7 +321,7 @@ wording_exp <- survey_data_tidy %>%
 # q11_2 - seaweed farming
 # q11_3 - kelp farming
 # q11_4 - ocean aquaculture
-# q11_5 - seaeweed aquaculture
+# q11_5 - seaweed aquaculture
 # q11_6 - kelp aquaculture
 # q11_7 - regenerative aquaculture
 # q11_8 - seaweed mariculture
@@ -316,7 +360,112 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ```
 
+## Other Questions
 
+```{r}
+## Exploratory Plots
+
+# (Q10) - How familiar are you with aquaculture?
+ggplot(data = survey_data_tidy, aes(y = q10)) +
+  geom_bar()
+
+```
+
+
+
+
+## Perception
+
+```{r}
+## Exploratory Plots
+
+perception_aq_boxplot <- survey_data_tidy %>% 
+  select(response_id, q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999))
+
+
+ggplot(data = perception_aq_boxplot, 
+       aes(y = ))
+
+
+# Descriptive Statistics
+perception_aq_stats <- survey_data_tidy %>% 
+  select(q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999)) %>% 
+  summarize(aq_mean = mean(q12, na.rm = TRUE),
+            aq_median = median(q12, na.rm = TRUE),
+            aq_sd = sd(q12, na.rm = TRUE),
+            seaweed_aq_mean = mean(q13, na.rm = TRUE),
+            seaweed_aq_median = median(q13, na.rm = TRUE),
+            seaweed_aq_sd = sd(q13, na.rm = TRUE)) 
+
+
+
+perception_aq_counts <- survey_data_tidy %>% 
+  select(q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999))
+
+
+
+
+```
+
+```{r}
+# (Q12) - In general, how positive or negative is your view of aquaculture?
+ggplot(data = perception_aq, aes(x = q12)) +
+  geom_bar(stat = "identity", fill = "#FF6666") +
+  scale_fill_manual(values = c("0" = "gray", "1" = "darkred", "2" = "lightred", "3" = "white", "4" = "lightgreen", "5" = "darkgreen"))
+
+
+# (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
+ggplot(data = perception_aq, aes(x = q13)) +
+  geom_bar()
+```
 
 
 ## Demographics
