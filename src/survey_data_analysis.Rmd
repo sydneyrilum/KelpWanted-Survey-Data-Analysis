@@ -11,12 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(janitor)
+library(data.table)  # advanced pivot_table tools
 library(naniar)      # replace NA tools
 library(sf)          # read in shapefiles
 library(tmap)        # interactive maps
 library(ggwordcloud) # create wordcloud plots
 library(patchwork)   # for stacking plots
-library(data.table)
+library(kableExtra)  # for making tables
 ```
 
 ## Data Set-up & Cleaning
@@ -56,57 +57,46 @@ survey_data_qrcode_tidy <- survey_data_qrcode %>%
 ```
 
 ```{r}
+# Convert dataframe to tidydata format (Reshaping the data)
+
+# convert data frame into a data table
+survey_data_tidy_long <- as.data.table(survey_data_tidy)
+
+# use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
+# unlike pivot_longer(), melt() allows for pivoting data tables with both numeric and character data!
+survey_data_tidy_long <- survey_data_tidy_long %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer")
+
+```
+
+## Average time to take survey
+
+```{r}
 # Check class
 class(survey_data_tidy$duration_in_seconds) # character
 
 # Convert class from character to numeric
 survey_data_tidy$duration_in_seconds = as.numeric(survey_data_tidy$duration_in_seconds)
 
-# Calculate average time (seconds) spent taking survey
-mean(survey_data_tidy$duration_in_seconds)
-
+# Calculate time (in minutes) spent taking survey
+mean((survey_data_tidy$duration_in_seconds)/60)  # check for outliers
+median((survey_data_tidy$duration_in_seconds)/60) # positively skewed
+min((survey_data_tidy$duration_in_seconds)/60) # potential outlier
+max((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 ```
 
+## Remove "Speeders" Responses
 
 ```{r}
-# Converting dataframe to tidydata format (Reshaping the data)
+# remove speeders responses (response type == 0) from survey dataframes
+survey_data_tidy_filtered <- survey_data_tidy %>% 
+  filter(response_type == 0)
 
-# convert data.frame to a tibble (IS THIS REQUIRED?????)
-#survey_data_tidy_too <- as_tibble(survey_data_tidy)
-
-# use pivot_longer() to reshape from wide to long format
-survey_data_tidy_too <- survey_data_tidy %>% 
-  pivot_longer(c(q12, q13), 
-               names_to = "question", 
-               values_to = "answer") %>% 
-  select(response_id, response_type, question, answer)
-
-
-#### IDEAS.......
-
-### split data into 2 data frames, one numerical answers, one character answers
-# create tibble for each, then pivot_longer
-
-# break the dataframe into two data frames (one for numerical data, one for categorical), pivot them and then join them
-# https://stackoverflow.com/questions/63994970/pivot-longer-multiple-variables-of-different-kinds
-
-# ORRRRRRR ........
-
-## Use advanced `datatable` package
-
-# convert data frame into a data table
-survey_data_tidy_too_2 <- as.data.table(survey_data_tidy)
-
-survey_data_tidy_too_2 <- survey_data_tidy_too_2 %>% 
-  melt(id.vars = c("response_id", "response_type", "finished"), 
-       variable.name = "question", 
-       value.name = "answer") %>% 
-  filter(question == "q11_4")
-
-head(survey_data_tidy_too_2)
+survey_data_tidy_long_filtered <- survey_data_tidy_long %>% 
+  filter(response_type == 0)
 ```
-
-
 
 
 ## Zipcode Analysis
@@ -169,8 +159,92 @@ st_crs(us_zipcodes) # NA
 #  tm_dots(col = "sienna2")
 ```
 
+## Wording Experiment - Does word choice influence residents' support for kelp aquaculture?
 
-## Word Clouds
+```{r}
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+wording_exp <- survey_data_tidy_long %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>% 
+  filter(answer != "NA") 
+
+# boxplot of wording experiment answers
+ggplot(data = wording_exp, 
+       aes(x = question,
+           y = answer)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 3, 
+               color = "black", 
+               fill = "black") +
+  labs(x = "Term",
+       y = "Strongly Opposed to Strongly Supportive",
+       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+  theme_light() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+# Descriptive statistics subset - wording experiment answer counts
+wording_exp_counts <- wording_exp %>% 
+  group_by(question) %>% 
+  summarize(count1 = sum(answer == 1),
+            count2 = sum(answer == 2),
+            count3 = sum(answer == 3),
+            count4 = sum(answer == 4),
+            count5 = sum(answer == 5),
+            sample_size = n())
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+# summary table
+wording_exp_counts %>% 
+  kable(col.names = c("Question", 
+                      "Strongly opposed", 
+                      "Somewhat opposed", 
+                      "Neither opposed nor in support",
+                      "Somewhat supportive",
+                      "Strongly supportive",
+                      "Sample Size")) %>% 
+  kable_styling()
+
+
+
+##### NOT RIGHT ??
+## How do I get means..... for each question
+wording_exp_stats <- wording_exp %>% 
+  group_by(question) %>% 
+  summarize(mean1 = round(mean(answer == 1),3),
+            mean2 = round(mean(answer == 2),3),
+            mean3 = round(mean(answer == 3),3),
+            mean4 = round(mean(answer == 4),3),
+            mean5 = round(mean(answer == 5),3))
+
+```
+
+
+### Word Clouds
 
 ```{r}
 # Word Cloud data cleaning
@@ -273,46 +347,7 @@ wordclouds +
 
 ```
 
-## Wording Experiment
-
-```{r}
-# Are you supportive of or opposed to expanding ______ off the California coast?
-# q2 - seaweed farming
-# q4 - kelp farming
-# q6 - seaweed aquaculture
-# q8 - kelp aquaculture
-
-wording_exp <- survey_data_tidy %>% 
-  select(q2,q4,q6,q8) %>% 
-  mutate(q2 = case_when( 
-    q2 == "Strongly opposed" ~ 1,
-    q2 == "Somewhat opposed" ~ 2,
-    q2 == "Neither opposed nor in support" ~ 3,
-    q2 == "Somewhat supportive" ~ 4,
-    q2 == "Strongly supportive" ~ 5)) %>%
-  mutate(q4 = case_when( 
-    q4 == "Strongly opposed" ~ 1,
-    q4 == "Somewhat opposed" ~ 2,
-    q4 == "Neither opposed nor in support" ~ 3,
-    q4 == "Somewhat supportive" ~ 4,
-    q4 == "Strongly supportive" ~ 5)) %>%
-  mutate(q6 = case_when( 
-    q6 == "Strongly opposed" ~ 1,
-    q6 == "Somewhat opposed" ~ 2,
-    q6 == "Neither opposed nor in support" ~ 3,
-    q6 == "Somewhat supportive" ~ 4,
-    q6 == "Strongly supportive" ~ 5)) %>%
-  mutate(q8 = case_when( 
-    q8 == "Strongly opposed" ~ 1,
-    q8 == "Somewhat opposed" ~ 2,
-    q8 == "Neither opposed nor in support" ~ 3,
-    q8 == "Somewhat supportive" ~ 4,
-    q8 == "Strongly supportive" ~ 5)) #%>%
-  #group_by(q2) %>% 
-  #summarize(counts = count(q2))
-
-```
-
+### Ranking terms by positivity
 
 ```{r}
 # Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
@@ -360,12 +395,15 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ```
 
-## Other Questions
+## Knowledge
 
 ```{r}
-## Exploratory Plots
-
 # (Q10) - How familiar are you with aquaculture?
+
+
+
+
+
 ggplot(data = survey_data_tidy, aes(y = q10)) +
   geom_bar()
 
@@ -373,36 +411,47 @@ ggplot(data = survey_data_tidy, aes(y = q10)) +
 
 
 
-
-## Perception
+## Perception of Aquaculture vs. Seaweed Aquaculture
 
 ```{r}
-## Exploratory Plots
+## Comparing perceptions
 
-perception_aq_boxplot <- survey_data_tidy %>% 
-  select(response_id, q12:q13) %>% 
-  mutate(q12 = case_when( 
-    q12 == "Very Negative" ~ -2,
-    q12 == "Negative" ~ -1,
-    q12 == "Neutral" ~ 0,
-    q12 == "Positive" ~ 1,
-    q12 == "Very Positive" ~ 2,
-    q12 == "Unsure/Not familiar" ~ -999)) %>%
-  mutate(q13 = case_when( 
-    q13 == "Very Negative" ~ -2,
-    q13 == "Negative" ~ -1,
-    q13 == "Neutral" ~ 0,
-    q13 == "Positive" ~ 1,
-    q13 == "Very Positive" ~ 2,
-    q13 == "Unsure/Not familiar" ~ -999)) %>% 
-  replace_with_na(replace = list(q12 = -999,
-                                 q13 = -999))
+# (Q12) - In general, how positive or negative is your view of aquaculture?
+# (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
 
-
+perception_aq_boxplot <- survey_data_tidy_long %>% 
+  filter(question == "q12" | question == "q13") %>% 
+  mutate(answer = case_when( 
+    answer == "Very Negative" ~ -2,
+    answer == "Negative" ~ -1,
+    answer == "Neutral" ~ 0,
+    answer == "Positive" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))
+  
+  
 ggplot(data = perception_aq_boxplot, 
-       aes(y = ))
+       aes(x = question,
+           y = answer)) +
+  coord_flip() +
+  geom_boxplot(color = c("darkblue","springgreen4")) +
+  stat_summary(fun = mean, 
+               geom = "point", 
+               shape = 20, 
+               size = 3, 
+               color = "black", 
+               fill = "black") +
+  labs(x = "Question",
+       y = "Very Negative to Very Positive",
+       title = "In general, how positive or negative is your view of ______") +
+  theme_light() +
+  theme(legend.position = "none")
 
 
+```
+
+```{r}
 # Descriptive Statistics
 perception_aq_stats <- survey_data_tidy %>% 
   select(q12:q13) %>% 
@@ -430,6 +479,27 @@ perception_aq_stats <- survey_data_tidy %>%
             seaweed_aq_sd = sd(q13, na.rm = TRUE)) 
 
 
+# using long dataframe format????
+
+perception_aq_counts <- survey_data_tidy_long %>% 
+  filter(question == "q12" | question == "q13") %>% 
+  mutate(answer = case_when( 
+    answer == "Very Negative" ~ -2,
+    answer == "Negative" ~ -1,
+    answer == "Neutral" ~ 0,
+    answer == "Positive" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999)) 
+#%>% 
+#  summarize()
+  
+```
+
+
+
+```{r}
+##### TEST
 
 perception_aq_counts <- survey_data_tidy %>% 
   select(q12:q13) %>% 
@@ -451,19 +521,12 @@ perception_aq_counts <- survey_data_tidy %>%
                                  q13 = -999))
 
 
-
-
-```
-
-```{r}
 # (Q12) - In general, how positive or negative is your view of aquaculture?
-ggplot(data = perception_aq, aes(x = q12)) +
-  geom_bar(stat = "identity", fill = "#FF6666") +
-  scale_fill_manual(values = c("0" = "gray", "1" = "darkred", "2" = "lightred", "3" = "white", "4" = "lightgreen", "5" = "darkgreen"))
-
+ggplot(data = perception_aq_counts, aes(y = q12)) +
+  geom_bar() 
 
 # (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
-ggplot(data = perception_aq, aes(x = q13)) +
+ggplot(data = perception_aq_counts, aes(y = q13)) +
   geom_bar()
 ```
 
