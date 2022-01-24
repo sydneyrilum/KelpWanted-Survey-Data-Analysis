@@ -1,0 +1,667 @@
+---
+title: "KelpWanted- Survey Data Analysis"
+author: "Sydney Rilum"
+date: "12/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load necessary packages
+library(tidyverse)
+library(here)
+library(janitor)
+library(naniar)      # replace NA tools
+library(sf)          # read in shapefiles
+#library(tmap)        # interactive maps
+library(ggwordcloud) # create wordcloud plots
+library(patchwork)   # for stacking plots
+library(data.table)
+library(raster) #for zipcodeR to work?
+library(zipcodeR) # for zipcode assignment by county, need to install extra packages if working on a windows (needed raster and dplyr loaded)
+library(dplyr)
+```
+
+## Data Set-up & Cleaning ####
+
+```{r}
+# Read in combined survey data
+survey_data <- read.csv(here("data","survey_data","combined_survey_responses.csv"))
+
+# Read in the Qualtrics Survey data
+survey_data_qualtrics <- read.csv(here("data","survey_data","qualtrics_survey_responses_final.csv"))
+
+# Read in the QR code Survey data
+survey_data_qrcode <- read.csv(here("data","survey_data","QRcode_choice_text_January13,2022.csv"))
+
+```
+
+```{r}
+# Clean up dataframes
+survey_data_tidy <- survey_data %>%
+  clean_names() %>% 
+  slice(-1) # remove first row of df
+
+survey_data_qualtrics_tidy <- survey_data_qualtrics %>%
+  clean_names() %>% 
+  slice(-1) # remove first row of df
+
+survey_data_qrcode_tidy <- survey_data_qrcode %>%
+  clean_names() %>% 
+  slice(-(1:2)) %>% # remove first 2 rows of df
+  dplyr::select(-recipient_last_name, # remove empty/unnecessary columns
+         -recipient_first_name,
+         -recipient_email,
+         -external_reference,
+         -distribution_channel,
+         -user_language,
+         -status)
+```
+
+```{r}
+# Check class
+class(survey_data_tidy$duration_in_seconds) # character
+
+# Convert class from character to numeric
+survey_data_tidy$duration_in_seconds = as.numeric(survey_data_tidy$duration_in_seconds)
+
+# Calculate average time (seconds) spent taking survey
+mean(survey_data_tidy$duration_in_seconds)
+
+```
+
+
+```{r}
+# Converting dataframe to tidydata format (Reshaping the data)
+
+# convert data.frame to a tibble (IS THIS REQUIRED?????)
+#survey_data_tidy_too <- as_tibble(survey_data_tidy)
+
+# use pivot_longer() to reshape from wide to long format
+survey_data_tidy_too <- survey_data_tidy %>% 
+  pivot_longer(c(q12, q13), 
+               names_to = "question", 
+               values_to = "answer") %>% 
+  dplyr::select(response_id, response_type, question, answer)
+
+
+#### IDEAS.......
+
+### split data into 2 data frames, one numerical answers, one character answers
+# create tibble for each, then pivot_longer
+
+# break the dataframe into two data frames (one for numerical data, one for categorical), pivot them and then join them
+# https://stackoverflow.com/questions/63994970/pivot-longer-multiple-variables-of-different-kinds
+
+# ORRRRRRR ........
+
+## Use advanced `datatable` package
+
+# convert data frame into a data table
+survey_data_tidy_too_2 <- as.data.table(survey_data_tidy)
+
+survey_data_tidy_too_2 <- survey_data_tidy_too_2 %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer") %>% 
+  filter(question == "q11_4")
+
+head(survey_data_tidy_too_2)
+```
+
+
+
+
+## Zipcode Analysis ####
+
+```{r}
+# q37 - Zipcode
+unique(survey_data_tidy$q37)
+
+# remove non-CA zipcode responses
+
+
+# Make a map of survey response zipcodes
+
+
+```
+
+
+```{r}
+# Read in California counties outline
+ca_counties <- read_sf(here("data", "ca_counties", "CA_Counties_TIGER2016.shp")) %>% 
+  clean_names()
+
+# Read in US zipcodes tabulation areas
+us_zipcodes <- read_sf(here("data", "zipcode_tabulation_areas_2020", "tl_2021_us_zcta520.shp")) %>% #this .shp is not in the rproj
+  clean_names()
+
+```
+
+```{r}
+us_zipcodes <- drop_na(us_zipcodes)
+
+# Check class
+class(us_zipcodes$ztca5ce20) # character
+```
+
+
+```{r}
+# Crop US zipcodes data frame to include only CA zipcodes
+#ca_zipcodes <- us_zipcodes %>% 
+#  filter(ztca5ce20 > 90000,
+#         ztca5ce20 < 95000)
+```
+
+
+```{r}
+# Check CRS (Coordinate Reference System)
+st_crs(ca_counties) # WGS 84
+st_crs(us_zipcodes) # NA
+```
+
+
+```{r}
+# Set tmap viewing mode to interactive
+#tmap_mode("view") 
+
+# Make an interactive map
+#tm_shape(ca_zipcodes) +
+#  tm_borders()
+#  tm_shape(oil_spill) +
+#  tm_dots(col = "sienna2")
+```
+
+```{r}
+# Creating a dataframe that is only zipcodes in Ventura and Santa Barbara Counites
+## Not run:
+download_zip_data() # uses zipcodeR data 
+## End(Not run)
+
+ventura_co_zip_full <-
+  search_county("ventura", "CA") 
+
+ventura_zipcodes<- 
+  ventura_co_zip_full[,c("zipcode" ,"county", "lat", "lng")]
+
+                                          
+santabarbara_co__zip_full <- 
+ search_county("Santa Barbara" , "CA")
+
+santabarbara_zipcodes<- 
+  santabarbara_co__zip_full[,c("zipcode" ,"county", "lat", "lng")]
+
+sb_ventura_co_zip <- 
+  rbind(ventura_zipcodes, santabarbara_zipcodes)
+
+```
+
+```{r}
+#select survery results from only Ventura and Santa Barbara Counties
+survey_data_tidy_sb_ventura <-
+ merge(survey_data_tidy, sb_ventura_co_zip, by.x = "q37", by.y = "zipcode")
+
+
+
+```
+
+
+## Word Clouds ####
+
+```{r}
+# Word Cloud data cleaning
+
+# convert each string of words to lowercase
+survey_data_tidy$q3 <- tolower(survey_data_tidy$q3)  # seaweed farming
+survey_data_tidy$q5 <- tolower(survey_data_tidy$q5)  # kelp farming
+survey_data_tidy$q7 <- tolower(survey_data_tidy$q7)  # seaweed aquaculture
+survey_data_tidy$q9 <- tolower(survey_data_tidy$q9)  # seaweed farming
+```
+
+```{r}
+# q3 - seaweed farming
+seaweed_farming <- survey_data_tidy %>% 
+  select(q3) %>%
+  mutate(q3 = str_trim(q3)) %>%  # remove excess whitespace before/after word
+  count(q3) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_seaweed_farming <- ggplot(data = seaweed_farming, 
+                                    aes(label = q3)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("burlywood4", "green")) +
+  theme_minimal() +
+  labs(y = "seaweed") +
+  theme(axis.line.y = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# q5 - kelp farming
+kelp_farming <- survey_data_tidy %>% 
+  select(q5) %>%
+  mutate(q5 = str_trim(q5)) %>%  # remove excess whitespace before/after word
+  count(q5) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_kelp_farming <- ggplot(data = kelp_farming, 
+                                    aes(label = q5)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("darkgreen", "green")) +
+  theme_minimal() +
+  labs(y = "kelp",
+       x = "farming") +
+  theme(axis.line.x = element_line(color="black", size = 0.1),
+        axis.line.y = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# q7 - seaweed aquaculture
+seaweed_aquaculture <- survey_data_tidy %>% 
+  select(q7) %>%
+  mutate(q7 = str_trim(q7)) %>%  # remove excess whitespace before/after word
+  count(q7) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_seaweed_aquaculture <- ggplot(data = seaweed_aquaculture, 
+                                    aes(label = q7)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("springgreen4", "green")) +
+  theme_minimal()
+```
+
+```{r}
+# q9 - kelp aquaculture
+kelp_aquaculture <- survey_data_tidy %>% 
+  select(q9) %>%
+  mutate(q9 = str_trim(q9)) %>%  # remove excess whitespace before/after word
+  count(q9) %>%                  # count repeating words
+  arrange(-n)                    # arrange word counts from largest to smallest
+
+
+wordcloud_kelp_aquaculture <- ggplot(data = kelp_aquaculture, 
+                                    aes(label = q9)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 25) +
+  scale_color_gradientn(colors = c("yellow4", "green")) +
+  theme_minimal() +
+  labs(x = "aquaculture") +
+  theme(axis.line.x = element_line(color="black", size = 0.1))
+```
+
+```{r}
+# stack word cloud plots using `patchwork` 
+wordclouds <- ((wordcloud_seaweed_farming + wordcloud_seaweed_aquaculture) /
+                 (wordcloud_kelp_farming + wordcloud_kelp_aquaculture))
+
+wordclouds +
+  plot_annotation(title = "When you think of _____  _____, what word comes to mind?") &
+  theme(plot.title = element_text(size = 12))
+
+```
+
+## Wording Experiment ####
+
+```{r}
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+wording_exp <- survey_data_tidy %>% 
+  select(q2,q4,q6,q8) %>% 
+  mutate(q2 = case_when( 
+    q2 == "Strongly opposed" ~ 1,
+    q2 == "Somewhat opposed" ~ 2,
+    q2 == "Neither opposed nor in support" ~ 3,
+    q2 == "Somewhat supportive" ~ 4,
+    q2 == "Strongly supportive" ~ 5)) %>%
+  mutate(q4 = case_when( 
+    q4 == "Strongly opposed" ~ 1,
+    q4 == "Somewhat opposed" ~ 2,
+    q4 == "Neither opposed nor in support" ~ 3,
+    q4 == "Somewhat supportive" ~ 4,
+    q4 == "Strongly supportive" ~ 5)) %>%
+  mutate(q6 = case_when( 
+    q6 == "Strongly opposed" ~ 1,
+    q6 == "Somewhat opposed" ~ 2,
+    q6 == "Neither opposed nor in support" ~ 3,
+    q6 == "Somewhat supportive" ~ 4,
+    q6 == "Strongly supportive" ~ 5)) %>%
+  mutate(q8 = case_when( 
+    q8 == "Strongly opposed" ~ 1,
+    q8 == "Somewhat opposed" ~ 2,
+    q8 == "Neither opposed nor in support" ~ 3,
+    q8 == "Somewhat supportive" ~ 4,
+    q8 == "Strongly supportive" ~ 5)) #%>%
+  #group_by(q2) %>% 
+  #summarize(counts = count(q2))
+
+```
+
+
+```{r}
+# Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
+
+# q11_1 - ocean farming
+# q11_2 - seaweed farming
+# q11_3 - kelp farming
+# q11_4 - ocean aquaculture
+# q11_5 - seaweed aquaculture
+# q11_6 - kelp aquaculture
+# q11_7 - regenerative aquaculture
+# q11_8 - seaweed mariculture
+
+# make new subset of data
+wording_exp_rank <- survey_data_tidy %>% 
+  select(q11_1:q11_8) %>% 
+  mutate_if(is.character,as.numeric) %>% 
+  summarize_all(mean, na.rm = TRUE) # calculate mean rank score for each answer choice
+
+# transpose dataframe
+wording_exp_rank <- t(wording_exp_rank) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "term") %>% 
+  mutate(term = case_when(
+    term == "q11_1" ~ "ocean farming",
+    term == "q11_2" ~ "seaweed farming",
+    term == "q11_3" ~ "kelp farming",
+    term == "q11_4" ~ "ocean aquaculture",
+    term == "q11_5" ~ "seaweed aquaculture",
+    term == "q11_6" ~ "kelp aquaculture",
+    term == "q11_7" ~ "regnerative aquaculture",
+    term == "q11_8" ~ "seaweed mariculture")) %>% 
+  mutate(term = fct_reorder(term, V1, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
+
+ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
+  geom_col(fill = "skyblue2") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "",
+       y = "Average Ranked Score (from 1 - 6, with 1 being most interested)",
+       title = "Terminology Ranked by Most Positive Connotation")
+
+
+### need to add std dev or std error bars???
+
+```
+
+## Other Questions ####
+
+```{r}
+## Exploratory Plots
+
+# (Q10) - How familiar are you with aquaculture?
+ggplot(data = survey_data_tidy, aes(y = q10)) +
+  geom_bar()
+
+```
+
+
+
+
+## Perception ####
+
+```{r}
+## Exploratory Plots
+
+perception_aq_boxplot <- survey_data_tidy %>% 
+  select(response_id, q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999))
+
+
+ggplot(data = perception_aq_boxplot, 
+       aes(y = ))
+
+
+# Descriptive Statistics
+perception_aq_stats <- survey_data_tidy %>% 
+  select(q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999)) %>% 
+  summarize(aq_mean = mean(q12, na.rm = TRUE),
+            aq_median = median(q12, na.rm = TRUE),
+            aq_sd = sd(q12, na.rm = TRUE),
+            seaweed_aq_mean = mean(q13, na.rm = TRUE),
+            seaweed_aq_median = median(q13, na.rm = TRUE),
+            seaweed_aq_sd = sd(q13, na.rm = TRUE)) 
+
+
+
+perception_aq_counts <- survey_data_tidy %>% 
+  select(q12:q13) %>% 
+  mutate(q12 = case_when( 
+    q12 == "Very Negative" ~ -2,
+    q12 == "Negative" ~ -1,
+    q12 == "Neutral" ~ 0,
+    q12 == "Positive" ~ 1,
+    q12 == "Very Positive" ~ 2,
+    q12 == "Unsure/Not familiar" ~ -999)) %>%
+  mutate(q13 = case_when( 
+    q13 == "Very Negative" ~ -2,
+    q13 == "Negative" ~ -1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Positive" ~ 1,
+    q13 == "Very Positive" ~ 2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>% 
+  replace_with_na(replace = list(q12 = -999,
+                                 q13 = -999))
+
+
+
+
+```
+
+```{r}
+# (Q12) - In general, how positive or negative is your view of aquaculture?
+ggplot(data = perception_aq, aes(x = q12)) +
+  geom_bar(stat = "identity", fill = "#FF6666") +
+  scale_fill_manual(values = c("0" = "gray", "1" = "darkred", "2" = "lightred", "3" = "white", "4" = "lightgreen", "5" = "darkgreen"))
+
+
+# (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
+ggplot(data = perception_aq, aes(x = q13)) +
+  geom_bar()
+```
+
+
+## Demographics ####
+
+```{r}
+## Exploratory Plots
+
+# Birth Year (Q31)
+ggplot(data = survey_data_tidy, aes(y = q31)) +
+  geom_bar()
+### need to remove SB and NJ words from years
+
+# Gender Identity (Q32)
+ggplot(data = survey_data_tidy, aes(x = q32)) +
+  geom_bar()
+
+# Race/ethnicity (Q33)
+ggplot(data = survey_data_tidy, aes(y = q33)) +
+  geom_bar()
+### how to deal with people selecting more than one option ????
+
+# Highest level of education (Q34)
+ggplot(data = survey_data_tidy, aes(y = q34)) +
+  geom_bar()
+
+# Annual household income (Q35)
+ggplot(data = survey_data_tidy, aes(y = q35)) +
+  geom_bar()
+
+# Political Affiliation (Q38)
+ggplot(data = survey_data_tidy, aes(y = q38)) +
+  geom_bar()
+
+
+```
+
+## Communication Questions ####
+
+```{r}
+# Q29_1 - Q29_6 (Rank the aquaculture related topics in order of interest in learning more, with 1 being most interested)
+
+# q29_1 - policy
+# q29_2 - permitting
+# q29_3 - environmental impacts
+# q29_4 - economic impacts
+# q29_5 - social & cultural impacts
+# q29_6 - research
+
+# make new subset of data
+comm_data <- survey_data_tidy %>% 
+  select(q29_1:q29_6) %>% 
+  mutate_if(is.character,as.numeric) %>% 
+  summarize_all(mean, na.rm = TRUE) # calculate mean rank score for each answer choice
+  #column_to_rownames(q29_1, "policy")
+
+# transpose dataframe
+comm_data <- t(comm_data) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "aquaculture_topics") %>% 
+  mutate(aquaculture_topics = case_when(
+    aquaculture_topics == "q29_1" ~ "policy",
+    aquaculture_topics == "q29_2" ~ "permitting",
+    aquaculture_topics == "q29_3" ~ "environmental impacts",
+    aquaculture_topics == "q29_4" ~ "economic impacts",
+    aquaculture_topics == "q29_5" ~ "social & cultural impacts",
+    aquaculture_topics == "q29_6" ~ "research")) %>% 
+  mutate(aquaculture_topics = fct_reorder(aquaculture_topics, V1, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
+
+ggplot(data = comm_data, aes(x = aquaculture_topics, y = V1)) +
+  geom_col(fill = "skyblue4") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "",
+       y = "Average Ranked Score (from 1 - 6, with 1 being most interested)",
+       title = "Aquaculture Topics Ranked by Interest in Learning More")
+
+
+### need to add std dev or std error bars???
+```
+
+```{r}
+# Q30_1 - Q30_6 (Rank the forms of communication by which you would prefer to learn about aquaculture, with 1 being most interested)
+
+# q30_1 - short educational film
+# q30_2 - physical pamphlets
+# q30_3 - festivals/conferences
+# q30_4 - website
+# q30_5 - social media/blogs
+# q30_6 - other
+# q30_6_TEXT - (other text)
+
+# make new subset of data
+comm_data_2 <- survey_data_tidy %>% 
+  select(q30_1:q30_6) %>% 
+  mutate_if(is.character,as.numeric) %>% 
+  summarize_all(mean, na.rm = TRUE) # calculate mean rank score for each answer choice
+
+# transpose dataframe
+comm_data_2 <- t(comm_data_2) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "form_of_communication") %>% 
+  mutate(form_of_communication = case_when(
+    form_of_communication == "q30_1" ~ "short educational films",
+    form_of_communication == "q30_2" ~ "physical pamphlets",
+    form_of_communication == "q30_3" ~ "festivals/conferences",
+    form_of_communication == "q30_4" ~ "website",
+    form_of_communication == "q30_5" ~ "social media/blogs",
+    form_of_communication == "q30_6" ~ "other")) %>% 
+  mutate(form_of_communication = fct_reorder(form_of_communication, V1, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
+
+ggplot(data = comm_data_2, aes(x = form_of_communication, y = V1)) +
+  geom_col(fill = "skyblue4") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "",
+       y = "Average Ranked Score (from 1 - 6, with 1 being most interested)",
+       title = "Ranked Forms of Communication")
+
+
+### need to add std dev or std error bars???
+
+```
+
+```{r}
+## Word Cloud list of "other" forms of communication
+
+# convert each string of words to lowercase
+survey_data_tidy$q30_6_text <- tolower(survey_data_tidy$q30_6_text)
+
+other_comm_forms <- survey_data_tidy %>% 
+  select(q30_6_text) %>%
+  mutate(q30_6_text = str_trim(q30_6_text)) %>%  # remove excess whitespace before/after word
+  count(q30_6_text) %>%                          # count repeating words
+  arrange(-n)                                    # arrange word counts from largest to smallest
+
+wordcloud_other_comm_forms <- ggplot(data = other_comm_forms, 
+                                    aes(label = q30_6_text)) +
+  geom_text_wordcloud(aes(color = n, size = n), 
+                      shape = "diamond") +
+  scale_size_area(max_size = 80) +
+  scale_color_gradientn(colors = c("burlywood4", "green")) +
+  theme_minimal() +
+  labs(y = "other forms of communication") +
+  theme(axis.line.y = element_line(color="black", size = 0.1))
+
+wordcloud_other_comm_forms
+```
+
+
+
+
+
+
+## Citations: ####
+
+California county boundaries layer: [US Census Bureau's 2016 MAF/TIGER database.](https://data.ca.gov/dataset/ca-geographic-boundaries)
+
+California ZIP code tabulations areas layer: [US Census Bureau's 2020 TIGER/Line Shapefiles database.](https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2021&layergroup=ZIP+Code+Tabulation+Areas)
+
+zipcode R package []
+(https://cran.r-project.org/web/packages/zipcodeR/zipcodeR.pdf)
+
+
