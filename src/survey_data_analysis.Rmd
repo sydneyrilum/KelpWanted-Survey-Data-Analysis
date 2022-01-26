@@ -20,7 +20,7 @@ library(patchwork)   # for stacking plots
 library(kableExtra)  # for making tables
 ```
 
-## Data Set-up & Cleaning
+## Data Set-up & Cleaning 
 
 ```{r}
 # Read in combined survey data
@@ -71,7 +71,9 @@ survey_data_tidy_long <- survey_data_tidy_long %>%
 
 ```
 
-## Average time to take survey
+
+
+## Average time to take survey 
 
 ```{r}
 # Check class
@@ -87,7 +89,9 @@ min((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 max((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 ```
 
-## Remove "Speeders" Responses
+
+
+## Remove "Speeders" Responses 
 
 ```{r}
 # remove speeders responses (response type == 0) from survey dataframes
@@ -99,7 +103,10 @@ survey_data_tidy_long_filtered <- survey_data_tidy_long %>%
 ```
 
 
-## Zipcode Analysis
+
+
+
+## Zipcode Analysis 
 
 ```{r}
 # q37 - Zipcode
@@ -159,7 +166,9 @@ st_crs(us_zipcodes) # NA
 #  tm_dots(col = "sienna2")
 ```
 
-## Wording Experiment - Does word choice influence residents' support for kelp aquaculture?
+
+
+## Wording Experiment - Does word choice influence residents' support for kelp aquaculture? 
 
 ```{r}
 # Are you supportive of or opposed to expanding ______ off the California coast?
@@ -243,8 +252,14 @@ wording_exp_stats <- wording_exp %>%
 
 ```
 
+### Analytical Test for Word Experiment 
 
-### Word Clouds
+```{r}
+
+```
+
+
+### Word Clouds 
 
 ```{r}
 # Word Cloud data cleaning
@@ -347,7 +362,9 @@ wordclouds +
 
 ```
 
-### Ranking terms by positivity
+
+
+### Ranking terms by positivity 
 
 ```{r}
 # Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
@@ -378,7 +395,7 @@ wording_exp_rank <- t(wording_exp_rank) %>%
     term == "q11_4" ~ "ocean aquaculture",
     term == "q11_5" ~ "seaweed aquaculture",
     term == "q11_6" ~ "kelp aquaculture",
-    term == "q11_7" ~ "regnerative aquaculture",
+    term == "q11_7" ~ "regenerative aquaculture",
     term == "q11_8" ~ "seaweed mariculture")) %>% 
   mutate(term = fct_reorder(term, V1, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
 
@@ -395,7 +412,9 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ```
 
-## Knowledge
+
+
+## Knowledge 
 
 ```{r}
 # (Q10) - How familiar are you with aquaculture?
@@ -411,7 +430,7 @@ ggplot(data = survey_data_tidy, aes(y = q10)) +
 
 
 
-## Perception of Aquaculture vs. Seaweed Aquaculture
+## Perception of Aquaculture vs. Seaweed Aquaculture 
 
 ```{r}
 ## Comparing perceptions
@@ -421,6 +440,9 @@ ggplot(data = survey_data_tidy, aes(y = q10)) +
 
 perception_aq_boxplot <- survey_data_tidy_long %>% 
   filter(question == "q12" | question == "q13") %>% 
+  mutate(question = case_when( 
+    question == "q12" ~ "aquaculture",
+    question == "q13" ~ "seaweed aquaculture")) %>% 
   mutate(answer = case_when( 
     answer == "Very Negative" ~ -2,
     answer == "Negative" ~ -1,
@@ -430,7 +452,7 @@ perception_aq_boxplot <- survey_data_tidy_long %>%
     answer == "Unsure/Not familiar" ~ -999)) %>%
   replace_with_na(replace = list(answer = -999))
   
-  
+# boxplot  
 ggplot(data = perception_aq_boxplot, 
        aes(x = question,
            y = answer)) +
@@ -442,14 +464,77 @@ ggplot(data = perception_aq_boxplot,
                size = 3, 
                color = "black", 
                fill = "black") +
-  labs(x = "Question",
+  labs(x = "",
        y = "Very Negative to Very Positive",
-       title = "In general, how positive or negative is your view of ______") +
+       title = "In general, how positive or negative is your view of ______ ?") +
   theme_light() +
   theme(legend.position = "none")
 
+```
+
+```{r}
+# alternative data frame
+perception_aq_stacked_bar <- survey_data_tidy_long %>% 
+  select(question, answer) %>% 
+  filter(question == "q12" | question == "q13") %>% 
+  mutate(question = case_when( 
+    question == "q12" ~ "aquaculture",
+    question == "q13" ~ "seaweed aquaculture")) %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  #replace_with_na(replace = list(number = -999)) %>% 
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count))*100)
+
+
+# Specify categorical order of answers
+perception_aq_stacked_bar$answer <- factor(perception_aq_stacked_bar$answer, levels = c("Very Negative", 
+                                                                                        "Negative", 
+                                                                                        "Neutral",
+                                                                                        "Positive",
+                                                                                        "Very Positive",
+                                                                                        "Unsure/Not familiar"))
+
+# percent stacked barchart
+ggplot(data = perception_aq_stacked_bar, 
+       aes(fill = forcats::fct_rev(answer),
+           x = proportion,
+           y = question)) +
+  geom_bar(position = "fill",
+           stat = "identity") +
+  #geom_text(data = perception_aq_boxplot_2,
+            #aes(x = freq, 
+               # label = proportion, 
+               # group = answer),
+            #position = position_fill(vjust=0.5),
+            #color = 'gray25',
+            #size = 3.5) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_fill_brewer(type = "div",
+                    palette = "RdYlGn",
+                    direction = -1) +
+  #scale_fill_manual(values = c("red", "orange", "yellow", "green", "blue"),
+                    #breaks = c("Very Negative", "Negative", "Neutral", "Positive", "Very Positive")) +
+  labs(x = "",
+       y = "",
+       title = "In general, how positive or negative is your view of ______ ?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom") +
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))
 
 ```
+
+
 
 ```{r}
 # Descriptive Statistics
@@ -496,42 +581,82 @@ perception_aq_counts <- survey_data_tidy_long %>%
   
 ```
 
-
+## Environmental Impacts
 
 ```{r}
-##### TEST
+# Environmental Impacts Questions
 
-perception_aq_counts <- survey_data_tidy %>% 
-  select(q12:q13) %>% 
-  mutate(q12 = case_when( 
-    q12 == "Very Negative" ~ -2,
-    q12 == "Negative" ~ -1,
-    q12 == "Neutral" ~ 0,
-    q12 == "Positive" ~ 1,
-    q12 == "Very Positive" ~ 2,
-    q12 == "Unsure/Not familiar" ~ -999)) %>%
-  mutate(q13 = case_when( 
-    q13 == "Very Negative" ~ -2,
-    q13 == "Negative" ~ -1,
-    q13 == "Neutral" ~ 0,
-    q13 == "Positive" ~ 1,
-    q13 == "Very Positive" ~ 2,
-    q13 == "Unsure/Not familiar" ~ -999)) %>% 
-  replace_with_na(replace = list(q12 = -999,
-                                 q13 = -999))
+# Q23_1 - Q23_7
+# To what extent do you agree with each of the following statements?
 
+environ_impacts <- survey_data_tidy_long %>% 
+  select(question, answer) %>% 
+  filter(question == "q23_1" | 
+           question == "q23_2" |
+           question == "q23_3" |
+           question == "q23_4" |
+           question == "q23_5" |
+           question == "q23_6" |
+           question == "q23_7") %>% 
+  mutate(question = case_when( 
+    question == "q23_1" ~ "...has negative impacts on marine ecosystems.",
+    question == "q23_2" ~ "...improves water quality nearby.",
+    question == "q23_3" ~ "...infrastructure poses a risk to marine life.",
+    question == "q23_4" ~ "...infrastructure has positive impacts on marine ecosystems.",
+    question == "q23_5" ~ "...has positive impacts on marine ecosystems.",
+    question == "q23_6" ~ "...causes bad smells nearby.",
+    question == "q23_7" ~ "...is visually appealing.")) %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  #replace_with_na(replace = list(number = -999)) %>% 
+  drop_na() %>%                                            # drop NAs (counts of those who skipped question)
+  #mutate_all(na_if, "") %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count))*100) %>% 
+  ungroup() 
 
-# (Q12) - In general, how positive or negative is your view of aquaculture?
-ggplot(data = perception_aq_counts, aes(y = q12)) +
-  geom_bar() 
+# Specify categorical order of answers
+environ_impacts$answer <- factor(environ_impacts$answer, levels = c("Strongly Disagree", 
+                                                                    "Disagree", 
+                                                                    "Neutral",
+                                                                    "Agree",
+                                                                    "Strongly Agree",
+                                                                    "Don't know"))
 
-# (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
-ggplot(data = perception_aq_counts, aes(y = q13)) +
-  geom_bar()
+# percent stacked barchart
+ggplot(data = environ_impacts, 
+       aes(fill = forcats::fct_rev(answer), 
+           x = proportion,
+           y = question)) +
+  geom_bar(position = "fill",
+           stat = "identity") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_discrete(position = "right") +
+  scale_fill_brewer(type = "div",
+                    palette = "RdYlGn",
+                    direction = +1) +
+  labs(x = "",
+       y = "",
+       title = "Seaweed Aquaculture...") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom") +
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))
+
 ```
 
+## Economic Impacts
 
-## Demographics
+
+## Demographics 
 
 ```{r}
 ## Exploratory Plots
@@ -565,7 +690,9 @@ ggplot(data = survey_data_tidy, aes(y = q38)) +
 
 ```
 
-## Communication Questions
+
+
+## Communication Questions 
 
 ```{r}
 # Q29_1 - Q29_6 (Rank the aquaculture related topics in order of interest in learning more, with 1 being most interested)
@@ -682,7 +809,10 @@ wordcloud_other_comm_forms
 
 
 
-## Citations:
+
+
+
+## Citations: 
 
 California county boundaries layer: [US Census Bureau's 2016 MAF/TIGER database.](https://data.ca.gov/dataset/ca-geographic-boundaries)
 
