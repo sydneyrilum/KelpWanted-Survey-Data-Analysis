@@ -23,6 +23,7 @@ library(patchwork)   # for stacking plots
 library(kableExtra)  # for making tables
 library(broom)
 library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+library(RColorBrewer)
 conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
 conflict_prefer("filter", "dplyr")
 conflict_prefer("chisq.test", "janitor")
@@ -497,21 +498,30 @@ It’s assumed that the expected value of cells in the contingency table should 
 *Statistical Test:* Chi-square test of Q10 & Q13
 
 
-```{r chi squared comparing SB and Ventura knowledge}
-
+```{r dataframe and table creation for analysis}
+#create subset from tidy filtered data
+#keep only question 10 and 13
 k_p <- survey_data_sbv_tidy_filtered %>% 
   select(response_id, question, answer) %>% 
   filter(question == "q10"|
            question == "q13") %>% 
- spread(question, answer)
-  
+#switch to wide format with response id as the link
+ spread(question, answer) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
 
+ggplot(k_p, aes(fill= q13, x = q10))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  
+#put counts into table format
 k_p_table<- k_p %>% 
   tabyl(q10, q13) 
 ```
 
 ```{r}
-# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
 k_p_ct <- k_p_table %>% 
   column_to_rownames(var = "q10")
 
@@ -524,6 +534,12 @@ k_p__x2_tidy <- tidy(knowledge_perception_x2)
 ```
 
 
+```{r multinomial logistic regression}
+
+```
+
+Familiarity with aquaculture may be 
+
 #Mann Whitney U Test 
 The Mann Whitney U test or Wilcoxon Rank Sum test is a nonparametric test to understand whether two samples come from the same population in independent groups. 
 
@@ -535,7 +551,7 @@ Assumptions:
  
 2. Sample size is large (n>30) for both populations
 
-3. Groups are independant
+3. Groups are independent
 
 
 Null Hypothesis (H0): THe two populations are equal 
