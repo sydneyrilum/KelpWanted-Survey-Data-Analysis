@@ -437,7 +437,7 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ## Knowledge 
 
-```{r Q10 data exploration and summaru stats }
+```{r Q10 data exploration and summary stats }
 # (Q10) - How familiar are you with aquaculture?
 # Very Familiar
 # Basic Understanding 
@@ -493,7 +493,7 @@ It’s assumed that the expected value of cells in the contingency table should 
 
 *Question:* Does familiarity with aquaculture influence their perception of aquaculture? 
 
-*Hypothesis:*  
+*Null Hypothesis (H0):*  There is no association between the two variables (familiarity and perceptions)
 
 *Statistical Test:* Chi-square test of Q10 & Q13
 
@@ -520,6 +520,7 @@ k_p_table<- k_p %>%
   tabyl(q10, q13) 
 ```
 
+
 ```{r}
 # Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
 k_p_ct <- k_p_table %>% 
@@ -532,6 +533,8 @@ knowledge_perception_x2
 # Get the chi-square test results to call outputs in-line
 k_p__x2_tidy <- tidy(knowledge_perception_x2)
 ```
+
+The chi-squared test comparing familiarity with perceptions show that the null hypothesis (there is no relationship between the variables) is false. The p-value is less than 0.05. However, the count in each 
 
 
 ```{r multinomial logistic regression}
@@ -554,7 +557,7 @@ Assumptions:
 3. Groups are independent
 
 
-Null Hypothesis (H0): THe two populations are equal 
+Null Hypothesis (H0): The two populations are equal 
 
 Hypothesis (H1):The populations are not equal 
 
