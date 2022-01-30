@@ -180,8 +180,21 @@ survey_data_tidy_filtered <- survey_data_tidy %>%
 survey_data_tidy_long_filtered <- survey_data_tidy_long %>% 
   filter(response_type != 0)
 
+# remove speeders from SBV datasets
+## THESE DATASETS SHOULD BE SAVED AS CSVs (see next code chunk)
+survey_data_tidy_sbv_filtered <- survey_data_tidy_sbv %>% 
+  filter(response_type != 0) 
+
 survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_long %>% 
   filter(response_type != 0)
+```
+
+```{r}
+write.csv(survey_data_tidy_sbv_filtered,
+          file = here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+write.csv(survey_data_tidy_sbv_long_filtered,
+          file = here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 ```
 
 
