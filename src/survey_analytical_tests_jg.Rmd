@@ -84,7 +84,7 @@ knowledge_perception_x2 <- chisq.test(k_p_ct)
 knowledge_perception_x2
 
 # Get the chi-square test results to call outputs in-line
-k_p__x2_tidy <- tidy(knowledge_perception_x2)
+k_p_x2_tidy <- tidy(knowledge_perception_x2)
 ```
 
 The p-squared value `r round(k_p_x2_tidy[1, 2], 2)` is less than alpha (0.05) indicating the null hypothesis- that the two variables are independent- failed. However, there were some counts that were less than 5 which indicates there should be additional study. However, the data violates an assumption of the chi-square test so we conduct the maximum likelihood test below. 
@@ -120,7 +120,6 @@ k_p_grouped_table<- k_p_grouped %>%
   tabyl(q10, q13) 
 ```
 
-
 ```{r Q13 grouped chi-squared}
 k_p_grouped_ct <- k_p_grouped_table%>% 
   column_to_rownames(var = "q10")
@@ -136,31 +135,51 @@ When perception is combined into 'negative', 'neutral', 'positive', and 'unsure'
 We can also  the Fischer's exact test to calculat the exact p-value. **Fisher's test requires a high muber of simulations because the value of p is so small. Kept crashing R**
 
 ```{r 10 v. 13 Fischer's exact test}
-fisher.test(k_p_ct, workspace = 2e7)
+#fisher.test(k_p_ct, workspace = 2e7)
 ```
 
+#### Q16 (heard about aq) v. Q13 (perception)
 
-
-```{r}
+```{r dataset Q16(heard of aq) v Q13 }
 #create subset from tidy filtered data
-#keep only question 10 and 13
-k_p <- survey_data_tidy_sbv_long_filtered %>% 
+#keep only question 16 and 13
+k_p_heard <- survey_data_tidy_sbv_long_filtered %>% 
   select(response_id, question, answer) %>% 
-  filter(question == "q10"|
+  filter(question == "q16"|
            question == "q13") %>% 
 #switch to wide format with response id as the link
  spread(question, answer) %>% 
-  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
-  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+  #group responses
+  mutate(q13= case_when(
+    q13 == "Very Negative" ~ "Negative",
+    q13 == "Negative" ~ "Negative",
+    q13 =="Neutral" ~ "Neutral",
+    q13 == "Positive" ~ "Positive",
+    q13 =="Very Positive" ~ "Positive",
+    q13 =="Unsure/Not familiar" ~ "Unsure/Not familiar",
+  ))
 
-ggplot(k_p, aes(fill= q13, x = q10))+
+ggplot(k_p_heard, aes(fill= q13, x = q16))+
   geom_bar(position = "dodge")+
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
-  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  scale_fill_manual(values =c("#D7191C", "#FFFFBF", "#2C7BB6", "#999999"))
   
 #put counts into table format
-k_p_table<- k_p %>% 
-  tabyl(q10, q13) 
+k_p_heard_table<- k_p_heard %>% 
+  tabyl(q16, q13) 
+```
+
+```{r 16 v. 13 chi squared test}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+k_p_heard_ct <- k_p_heard_table %>% 
+  column_to_rownames(var = "q16")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+k_p_heard_x2 <- chisq.test(k_p_heard_ct)
+k_p_heard_x2
+
+# Get the chi-square test results to call outputs in-line
+k_p_x2_tidy <- tidy(k_p_heard_x2)
 ```
 
 
