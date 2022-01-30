@@ -306,6 +306,8 @@ AND thus we can now group answers from Q2,4,6,8 together for further analyses, a
 
 
 
+
+
 # 3. Perception: 
 
 *Question:* Does perception of aquaculture change when specifying seaweed aquaculture? 
@@ -313,6 +315,99 @@ AND thus we can now group answers from Q2,4,6,8 together for further analyses, a
 *Hypothesis:* 
 
 *Statistical Test:* Chi-square test of Q12 vs. Q13
+
+
+
+
+# 4. Relationship Between Perception and Support: 
+
+*Question:* Is support related to more positive perceptions of seaweed aquaculture?
+
+*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
+
+
+dependent variable = support (Q2)
+independent variable = perception (Q13)
+
+```{r}
+# Combine Q2,4,6,8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+combined_support_answers <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2)) %>% 
+  filter(answer != "NA") 
+
+```
+
+```{r}
+# create data frame with Q2 and Q13
+
+ordinal_log_reg_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q13" ~ "q13")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very Negative" ~ -2,
+    answer == "Negative" ~ -1,
+    answer == "Neutral" ~ 0,
+    answer == "Positive" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>%  # remove "unsure" count data
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg <- ordinal_log_reg_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q13 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_table<- ordinal_log_reg %>% 
+  tabyl(q2, q13) %>% 
+  column_to_rownames(var = "q2")
+```
 
 
 
@@ -326,7 +421,55 @@ AND thus we can now group answers from Q2,4,6,8 together for further analyses, a
 
 
 
+#6. Relationship Between Knowledge and Support: 
 
+*Question:* Does familiarity with aquaculture influence support for expansion? 
+
+*Hypothesis:* Those who are familiar with aquaculture will have more polarized opinions. Those less familiar will have more positive views of kelp aquaculture. 
+
+*Statistical Test:* Ordinal logistic regression of familiarity (Q10, Q16, and/or Q17) to predict support (combined result of support: Q2,4,6,8)
+
+```{r}
+# create data frame with Q2 and Q10
+
+ordinal_log_reg_2_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q10") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q10" ~ "q10")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very familiar" ~ 1,
+    answer == "Basic understanding" ~ 2,
+    answer == "Heard of it, but don't know details" ~ 3,
+    answer == "Never heard of it" ~ 4)) %>%
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_2 <- ordinal_log_reg_2_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q10 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_2_table<- ordinal_log_reg_2 %>% 
+  tabyl(q2, q10) %>% 
+  column_to_rownames(var = "q2")
+```
 
 
 

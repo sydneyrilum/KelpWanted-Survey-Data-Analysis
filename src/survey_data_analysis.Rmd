@@ -420,7 +420,7 @@ wordclouds <- ((wordcloud_seaweed_farming + wordcloud_seaweed_aquaculture) /
 
 wordclouds +
   plot_annotation(title = "When you think of _____  _____, what word comes to mind?") &
-  theme(plot.title = element_text(size = 12))
+  theme(plot.title = element_text(size = 20)) 
 
 ```
 
@@ -551,7 +551,7 @@ perception_aq_stacked_bar <- survey_data_tidy_long %>%
   summarize(count = n()) %>% 
   ungroup() %>% 
   group_by(question) %>% 
-  mutate(proportion = (count / sum(count))*100)
+  mutate(proportion = (count / sum(count)))
 
 
 # Specify categorical order of questions and answers
@@ -701,7 +701,7 @@ ggplot(data = environ_impacts,
   scale_x_continuous(labels = scales::percent) +
   scale_y_discrete(position = "right") +
   scale_fill_brewer(type = "div",
-                    palette = "RdYlGn",
+                    palette = "RdYlBu",
                     direction = +1) +
   labs(x = "",
        y = "",
