@@ -1,0 +1,201 @@
+---
+title: "statsistical_tests_jg"
+author: "Janelle Gaun"
+date: "1/30/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(data.table)  # advanced pivot_table tools
+library(naniar)      # replace NA tools
+#library(sf)          # read in shapefiles
+#library(tmap)        # interactive maps
+#library(zipcodeR)    # for zipcode assignment by county
+#library(raster)      # for mapping raster layers
+#library(dplyr)       # needed ONLY if working on a windows computer
+#library(ggwordcloud) # create wordcloud plots
+library(patchwork)   # for stacking plots
+library(kableExtra)  # for making tables
+library(broom)
+library(stats)
+#library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+library(RColorBrewer)
+```
+
+```{r}
+#load in compiled data files 
+
+survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+```
+
+## Knowledge 
+
+We test the relationship between people's familiarity with aquaculture and their perceptions of seaweed aquaculture using a chi-squared test. 
+
+*10 & 13. perception and Familiarity* 
+
+*Question:* Does familiarity with aquaculture influence their  of aquaculture? 
+
+*Null Hypothesis (H0):*  There is no association between the two variables (familiarity and perceptions) i.e. they are independent 
+
+*Statistical Test:* Chi-square test of Q10 & Q13
+
+*Test Statistic:* P-value > 0.5 
+
+#### Q10 (familiarity) v. Q13 (perception of swaq)
+```{r 10v.13 dataframe, table and plot}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+#switch to wide format with response id as the link
+ spread(question, answer) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+
+ggplot(k_p, aes(fill= q13, x = q10))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  
+#put counts into table format
+k_p_table<- k_p %>% 
+  tabyl(q10, q13) 
+```
+
+One key assumption of the chi-square test is that 80% of the cells must have an expected value of 5 or greater. Only 14 of the 24 cells meet this requirement (58%), therefore violating the assumptions of the chi-square test. We will use the maximum liklihood chi-square test to also understand the relationship bewteen the two variables. 
+
+
+```{r 10 v. 13 chi squared test}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+k_p_ct <- k_p_table %>% 
+  column_to_rownames(var = "q10")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+knowledge_perception_x2 <- chisq.test(k_p_ct)
+knowledge_perception_x2
+
+# Get the chi-square test results to call outputs in-line
+k_p__x2_tidy <- tidy(knowledge_perception_x2)
+```
+
+The p-squared value `r round(k_p_x2_tidy[1, 2], 2)` is less than alpha (0.05) indicating the null hypothesis- that the two variables are independent- failed. However, there were some counts that were less than 5 which indicates there should be additional study. However, the data violates an assumption of the chi-square test so we conduct the maximum likelihood test below. 
+
+We will aggregate 'very negative' and 'negative' and 'very positive' and 'postiive' and run the chi-square with these groups. 
+
+```{r group Q13 responses}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p_grouped <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+#switch to wide format with response id as the link
+ spread(question, answer) %>% 
+#group responses
+    mutate(q13= case_when(
+    q13 == "Very Negative" ~ "Negative",
+    q13 == "Negative" ~ "Negative",
+    q13 =="Neutral" ~ "Neutral",
+    q13 == "Positive" ~ "Positive",
+    q13 =="Very Positive" ~ "Positive",
+    q13 =="Unsure/Not familiar" ~ "Unsure/Not familiar",
+  ))
+
+#ggplot(k_p, aes(fill= q13, x = q10))+
+ # geom_bar(position = "dodge")+
+  #scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  #scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  
+#put counts into table format
+k_p_grouped_table<- k_p_grouped %>% 
+  tabyl(q10, q13) 
+```
+
+
+```{r Q13 grouped chi-squared}
+k_p_grouped_ct <- k_p_grouped_table%>% 
+  column_to_rownames(var = "q10")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+knowledge_perception_grouped_x2 <- chisq.test(k_p_grouped_ct)
+knowledge_perception_grouped_x2
+
+```
+
+When perception is combined into 'negative', 'neutral', 'positive', and 'unsure', the null hypothesis is rejected (p-value= 2.22 x10-7, alpha =0.05) which indicates the variables are dependent. 
+
+We can also  the Fischer's exact test to calculat the exact p-value. **Fisher's test requires a high muber of simulations because the value of p is so small. Kept crashing R**
+
+```{r 10 v. 13 Fischer's exact test}
+fisher.test(k_p_ct, workspace = 2e7)
+```
+
+
+
+```{r}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+#switch to wide format with response id as the link
+ spread(question, answer) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+
+ggplot(k_p, aes(fill= q13, x = q10))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  
+#put counts into table format
+k_p_table<- k_p %>% 
+  tabyl(q10, q13) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
