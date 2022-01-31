@@ -351,22 +351,22 @@ summary(ordinal_log_reg_2_table)
 ```
 
 
-```{r ordinal logistic model for R}
+```{r create ordinal logistic model}
 #use polr to create a logit model to understand how familiarity influences expansion
 m1 <- polr(factor(q2) ~q10, data=ordinal_log_reg_2, Hess =TRUE)
 summary(m1)
 ```
 
 
-```{r}
+```{r understand odds ratio}
 #interpret odds ratio. Outside parenthesis are important 
 (ci <- confint(m1))
 exp(cbind(coef(m1), t(ci)))
 ```
 
 
-```{r}
-newdf <- data.frame(q10 =c(0,1))
+```{r predicted probabilities to understand odds ratio}
+newdf <- data.frame(q10 =c(1, 2, 3, 4))
 (phat <- predict(object = m1, newdf, type = "p"))
 ```
 
