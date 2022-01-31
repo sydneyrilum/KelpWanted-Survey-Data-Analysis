@@ -301,7 +301,7 @@ The p-value of the test is 0.3543. Since this p-value is not less than .05, we d
 
 There is not a significant association between word choice and whether a Santa Barbara and Ventura County residents are supportive of kelp aquaculture ($\chi$^2^(`r support_tidy$parameter`) = `r round(support_tidy$statistic,2)`, *p* = `r format(support_tidy$p.value, scientific = TRUE, digits = 3)`). Therefore, we accept the null hypothesis that there is no association between word choice and whether a Santa Barbara or Ventura County resident is supportive of kelp aquaculture. 
 
-AND thus we can now group answers from Q2,4,6,8 together for further analyses, assuming that this combined data set reflects respondents support or opposition to the synonomous terms of kelp/seaweed aquauculture and kelp/seaweed farming.
+AND thus we can now group answers from Q2,4,6,8 together for further analyses, assuming that this combined data set reflects respondents support or opposition to the synonymous terms of kelp/seaweed aquauculture and kelp/seaweed farming.
 
 
 
