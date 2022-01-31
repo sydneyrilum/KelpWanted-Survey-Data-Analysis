@@ -437,7 +437,7 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ## Knowledge 
 
-```{r Q10 data exploration and summary stats }
+```{r Q10 & Q13 Chi-Squared Test }
 # (Q10) - How familiar are you with aquaculture?
 # Very Familiar
 # Basic Understanding 
@@ -498,27 +498,7 @@ It’s assumed that the expected value of cells in the contingency table should 
 *Statistical Test:* Chi-square test of Q10 & Q13
 
 
-```{r dataframe and table creation for analysis}
-#create subset from tidy filtered data
-#keep only question 10 and 13
-k_p <- survey_data_sbv_tidy_filtered %>% 
-  select(response_id, question, answer) %>% 
-  filter(question == "q10"|
-           question == "q13") %>% 
-#switch to wide format with response id as the link
- spread(question, answer) %>% 
-  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
-  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
 
-ggplot(k_p, aes(fill= q13, x = q10))+
-  geom_bar(position = "dodge")+
-  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
-  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
-  
-#put counts into table format
-k_p_table<- k_p %>% 
-  tabyl(q10, q13) 
-```
 
 
 ```{r}
@@ -534,10 +514,10 @@ knowledge_perception_x2
 k_p__x2_tidy <- tidy(knowledge_perception_x2)
 ```
 
-The chi-squared test comparing familiarity with perceptions show that the null hypothesis (there is no relationship between the variables) is false. The p-value is less than 0.05. However, the count in each 
+The chi-squared test comparing familiarity with perceptions show that the null hypothesis (there is no relationship between the variables) is false. The p-value is less than 0.05. 
 
 
-```{r multinomial logistic regression}
+```{r chi-squared test Q16, Q17 and }
 
 ```
 
@@ -561,9 +541,6 @@ Null Hypothesis (H0): The two populations are equal
 
 Hypothesis (H1):The populations are not equal 
 
-```{r coding }
-
-```
 
 
 ```{r Q16 descriptive statistics}
@@ -593,6 +570,13 @@ Q17<- survey_data_tidy_sbv_long_filtered %>%
 summaryBy(answer, data=Q17)
 
 ```
+
+```{r}
+support_perception <- pairwise.wilcox.test(ordinal_log_reg$q2, ordinal_log_reg$q13, data=ordinal_log_reg)
+
+tidy(support_perception)
+```
+
 # 5. Knowledge: 
 
 *Questions:* Are residents familiar with kelp aquaculture? 
@@ -983,7 +967,95 @@ wordcloud_other_comm_forms
 ```
 
 
+# 4. Relationship Between Perception and Support: 
 
+*Question:* Is support related to more positive perceptions of seaweed aquaculture?
+
+*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
+
+
+dependent variable = support (Q2)
+independent variable = perception (Q13)
+
+```{r}
+# Combine Q2,4,6,8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+combined_support_answers <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2)) %>% 
+  filter(answer != "NA") 
+
+```
+
+```{r}
+# create data frame with Q2 and Q13
+
+ordinal_log_reg_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q13" ~ "q13")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very Negative" ~ -2,
+    answer == "Negative" ~ -1,
+    answer == "Neutral" ~ 0,
+    answer == "Positive" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>%  # remove "unsure" count data
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg <- ordinal_log_reg_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q13 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_table<- ordinal_log_reg %>% 
+  tabyl(q2, q13) %>% 
+  column_to_rownames(var = "q2")
+```
 
 
 
