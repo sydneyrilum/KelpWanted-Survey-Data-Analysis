@@ -19,6 +19,7 @@ library(zipcodeR)    # for zipcode assignment by county
 #library(raster)      # for mapping raster layers
 #library(dplyr)       # needed ONLY if working on a windows computer
 library(ggwordcloud) # create wordcloud plots
+library(wordcloud)
 library(patchwork)   # for stacking plots
 library(kableExtra)  # for making tables
 
@@ -351,9 +352,15 @@ survey_data_tidy$q9 <- tolower(survey_data_tidy$q9)  # seaweed farming
 seaweed_farming <- survey_data_tidy %>% 
   select(q3) %>%
   mutate(q3 = str_trim(q3)) %>%  # remove excess whitespace before/after word
+  mutate(q3 = str_replace(q3, pattern = "goodl", replacement = "good")) %>% 
+  mutate(q3 = str_replace(q3, pattern = "auaculture", replacement = "auqaculture")) %>% 
+  mutate(q3 = str_replace(q3, pattern = "sustainability", replacement = "sustainable")) %>% 
+  filter(q3 != "idk") %>% 
+  filter(q3 != "huh") %>% 
+  filter(q3 != "none") %>% 
+  filter(q3 != "nothing") %>% 
   count(q3) %>%                  # count repeating words
   arrange(-n)                    # arrange word counts from largest to smallest
-
 
 wordcloud_seaweed_farming <- ggplot(data = seaweed_farming, 
                                     aes(label = q3)) +
@@ -362,8 +369,18 @@ wordcloud_seaweed_farming <- ggplot(data = seaweed_farming,
   scale_size_area(max_size = 25) +
   scale_color_gradientn(colors = c("burlywood4", "green")) +
   theme_minimal() +
-  labs(y = "seaweed") +
-  theme(axis.line.y = element_line(color="black", size = 0.1))
+  labs(title = "seaweed farming") 
+  #theme(axis.line.y = element_line(color="black", size = 0.1))
+
+# alternative word cloud
+seaweed_farming_test <- seaweed_farming %>% 
+  slice(-1) # remove first row of df
+
+wordcloud_seaweed_farming_2 <- wordcloud(words = seaweed_farming_test$q3, 
+                                         freq = seaweed_farming_test$n,
+                                         min.freq = 1,
+                                         random.order = FALSE,
+                                         colors = brewer.pal(8, "Dark2"))
 ```
 
 ```{r}
@@ -371,6 +388,12 @@ wordcloud_seaweed_farming <- ggplot(data = seaweed_farming,
 kelp_farming <- survey_data_tidy %>% 
   select(q5) %>%
   mutate(q5 = str_trim(q5)) %>%  # remove excess whitespace before/after word
+  mutate(q5 = str_replace(q5, pattern = "icean", replacement = "ocean")) %>% 
+  filter(q5 != "i") %>% 
+  filter(q5 != "idk") %>% 
+  filter(q5 != "what") %>% 
+  filter(q5 != "test") %>% 
+  filter(q5 != "testpanel") %>%
   count(q5) %>%                  # count repeating words
   arrange(-n)                    # arrange word counts from largest to smallest
 
@@ -382,10 +405,20 @@ wordcloud_kelp_farming <- ggplot(data = kelp_farming,
   scale_size_area(max_size = 25) +
   scale_color_gradientn(colors = c("darkgreen", "green")) +
   theme_minimal() +
-  labs(y = "kelp",
-       x = "farming") +
-  theme(axis.line.x = element_line(color="black", size = 0.1),
-        axis.line.y = element_line(color="black", size = 0.1))
+  labs(title = "kelp farming") +
+  theme(plot.title.position = "panel")
+  #theme(axis.line.x = element_line(color="black", size = 0.1),
+        #axis.line.y = element_line(color="black", size = 0.1))
+
+# alternative word cloud
+kelp_farming_test <- kelp_farming %>% 
+  slice(-1) # remove first row of df
+
+wordcloud_kelp_farming_2 <- wordcloud(words = kelp_farming_test$q5, 
+                                      freq = kelp_farming_test$n,
+                                      min.freq = 1,
+                                      random.order = FALSE,
+                                      colors = brewer.pal(8, "Dark2"))
 ```
 
 ```{r}
@@ -393,6 +426,12 @@ wordcloud_kelp_farming <- ggplot(data = kelp_farming,
 seaweed_aquaculture <- survey_data_tidy %>% 
   select(q7) %>%
   mutate(q7 = str_trim(q7)) %>%  # remove excess whitespace before/after word
+  mutate(q7 = str_replace(q7, pattern = "enviironmental", replacement = "environment")) %>% 
+  mutate(q7 = str_replace(q7, pattern = "enviroment", replacement = "environment")) %>% 
+  mutate(q7 = str_replace(q7, pattern = "environments", replacement = "environment")) %>% 
+  mutate(q7 = str_replace(q7, pattern = "harvesting", replacement = "harvest")) %>% 
+  filter(q7 != "none") %>% 
+  filter(q7 != "nothing") %>% 
   count(q7) %>%                  # count repeating words
   arrange(-n)                    # arrange word counts from largest to smallest
 
@@ -403,7 +442,19 @@ wordcloud_seaweed_aquaculture <- ggplot(data = seaweed_aquaculture,
                       shape = "diamond") +
   scale_size_area(max_size = 25) +
   scale_color_gradientn(colors = c("springgreen4", "green")) +
-  theme_minimal()
+  theme_minimal() +
+  labs(title = "seaweed aquaculture")
+
+# alternative word cloud
+seaweed_aquaculture_test <- seaweed_aquaculture %>% 
+  slice(-1) # remove first row of df
+
+wordcloud_seaweed_aquaculture_2 <- wordcloud(words = seaweed_aquaculture_test$q7, 
+                                            freq = seaweed_aquaculture_test$n,
+                                            min.freq = 1,
+                                            random.order = FALSE,
+                                            random.color = FALSE, 
+                                            colors= c("seagreen4", "seagreen","seagreen3","palegreen2","palegreen3"))
 ```
 
 ```{r}
@@ -411,6 +462,15 @@ wordcloud_seaweed_aquaculture <- ggplot(data = seaweed_aquaculture,
 kelp_aquaculture <- survey_data_tidy %>% 
   select(q9) %>%
   mutate(q9 = str_trim(q9)) %>%  # remove excess whitespace before/after word
+  mutate(q9 = str_replace(q9, pattern = "aquaculter", replacement = "aquaculture")) %>% 
+  mutate(q9 = str_replace(q9, pattern = "environment", replacement = "environmental")) %>% 
+  mutate(q9 = str_replace(q9, pattern = "environmentalal", replacement = "environmental")) %>%   
+  mutate(q9 = str_replace(q9, pattern = "sustainable", replacement = "sustainability")) %>%   
+  filter(q9 != "huh") %>% 
+  filter(q9 != "noidea") %>% 
+  filter(q9 != "none") %>% 
+  filter(q9 != "nope") %>% 
+  filter(q9 != "unsure") %>% 
   count(q9) %>%                  # count repeating words
   arrange(-n)                    # arrange word counts from largest to smallest
 
@@ -422,8 +482,19 @@ wordcloud_kelp_aquaculture <- ggplot(data = kelp_aquaculture,
   scale_size_area(max_size = 25) +
   scale_color_gradientn(colors = c("yellow4", "green")) +
   theme_minimal() +
-  labs(x = "aquaculture") +
-  theme(axis.line.x = element_line(color="black", size = 0.1))
+  labs(title = "kelp aquaculture") 
+  #theme(axis.line.x = element_line(color="black", size = 0.1))
+
+# alternative word cloud
+kelp_aquaculture_test <- kelp_aquaculture %>% 
+  slice(-1) # remove first row of df
+
+wordcloud_kelp_aquaculture_2 <- wordcloud(words = kelp_aquaculture_test$q9, 
+                                         freq = kelp_aquaculture_test$n,
+                                         min.freq = 1,
+                                         random.order = FALSE,
+                                         random.color = FALSE, 
+                                         colors= c("royalblue4", "steelblue1","steelblue2","steelblue3","steelblue"))
 ```
 
 ```{r}
@@ -433,7 +504,7 @@ wordclouds <- ((wordcloud_seaweed_farming + wordcloud_seaweed_aquaculture) /
 
 wordclouds +
   plot_annotation(title = "When you think of _____  _____, what word comes to mind?") &
-  theme(plot.title = element_text(size = 20)) 
+  theme(plot.title = element_text(size = 15)) 
 
 ```
 

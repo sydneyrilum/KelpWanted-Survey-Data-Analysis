@@ -1,0 +1,90 @@
+---
+title: "weighting"
+author: "Sydney Rilum"
+date: "1/30/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load necessary packages
+library(tidyverse)
+library(here)
+library(janitor)
+library(data.table)  # advanced pivot_table tools
+library(naniar)      # replace NA tools
+library(sf)          # read in shapefiles
+#library(tmap)        # interactive maps
+library(zipcodeR)    # for zipcode assignment by county
+#library(raster)      # for mapping raster layers
+#library(dplyr)       # needed ONLY if working on a windows computer
+library(ggwordcloud) # create wordcloud plots
+library(patchwork)   # for stacking plots
+library(kableExtra)  # for making tables
+
+#library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+#conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
+#conflict_prefer("filter", "dplyr")
+```
+
+## Data Set-up
+
+```{r}
+# Read in combined survey data for SBV
+survey_data_tidy_sbv_filtered <- read.csv(here("data","survey_data_tidy_sbv_filtered.csv"))
+
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+```
+
+
+## Data Weighting
+
+```{r}
+# Gender Identity (Q32)
+ggplot(data = survey_data_tidy_sbv_filtered, aes(x = q32)) +
+  geom_bar()
+
+
+gender_counts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q32") %>% 
+  group_by(answer) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+```
+
+
+```{r}
+# weighting the data by gender/sex (q32)
+
+# first remove 5 non-binary responses
+weighted <- survey_data_tidy_sbv_filtered %>% 
+  filter(q32 != "Non-binary")
+  
+ggplot(data = weighted, aes(x = q32)) +
+  geom_bar()
+
+weighted_gender_counts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q32") %>% 
+  filter(answer != "Non-binary") %>% 
+  group_by(answer) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

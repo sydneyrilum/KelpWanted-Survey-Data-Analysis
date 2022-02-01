@@ -354,13 +354,38 @@ combined_support_answers <- survey_data_tidy_sbv_long_filtered %>%
     question == "q4" ~ "q2",
     question == "q6" ~ "q2",
     question == "q8" ~ "q2")) %>% 
-  mutate(answer = case_when( 
-    answer == "Strongly opposed" ~ -2,
-    answer == "Somewhat opposed" ~ -1,
-    answer == "Neither opposed nor in support" ~ 0,
-    answer == "Somewhat supportive" ~ 1,
-    answer == "Strongly supportive" ~ 2)) %>% 
-  filter(answer != "NA") 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+combined_support_answers$answer <- factor(combined_support_answers$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = combined_support_answers, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(type = "div",
+                    palette = "RdYlGn",
+                    direction = -1) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
 
 ```
 
