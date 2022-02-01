@@ -1,0 +1,399 @@
+---
+title: "Survey - Analytical Tests"
+author: "Laurel Wee"
+date: "1/26/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(broom)
+library(kableExtra)
+library(data.table)  # advanced pivot_table tools
+library(naniar)      # replace NA tools
+library(zipcodeR)    # for zipcode assignment by county
+library(raster)      # for mapping raster layers
+library(dplyr)       # needed ONLY if working on a windows computer
+library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
+conflict_prefer("filter", "dplyr")
+conflict_prefer("chisq.test", "janitor")
+```
+
+## Data Set-up & Cleaning 
+
+```{r}
+# Read in combined survey data
+survey_data <- read.csv(here("data","survey_data","combined_survey_responses.csv")) 
+
+survey_data_clean <- survey_data %>%
+  clean_names() %>% 
+  slice(-1) # remove first row of df
+```
+
+```{r}
+## Filter for Santa Barbara & Ventura County Zipcodes 
+# Q37 - Zipcode Data
+
+# Create a dataframe containing only zipcodes from Ventura and Santa Barbara Counties
+## Not run:
+download_zip_data() # uses zipcodeR data 
+## End(Not run)
+
+ventura_co_zip_full <-
+  search_county("ventura", "CA") 
+
+ventura_zipcodes<- 
+  ventura_co_zip_full[,c("zipcode", "county", "lat", "lng")]
+
+sb_co_zip_full <- 
+ search_county("Santa Barbara", "CA")
+
+sb_zipcodes<- 
+  sb_co_zip_full[,c("zipcode", "county", "lat", "lng")]
+
+# combine SB & Ventura zipcode data frames
+sb_ventura_co_zip <- 
+  rbind(ventura_zipcodes, sb_zipcodes)
+```
+
+```{r}
+# select survey responses from Ventura County residents ONLY
+survey_data_v <- merge(survey_data_clean, ventura_zipcodes, 
+                         by.x = "q37", by.y = "zipcode")
+
+# select survey responses from Santa Barbara County residents ONLY
+survey_data_sb <- merge(survey_data_clean, sb_zipcodes, 
+                         by.x = "q37", by.y = "zipcode")
+
+# select survey responses from Ventura AND Santa Barbara County residents
+survey_data_sbv <- merge(survey_data_clean, sb_ventura_co_zip, 
+                         by.x = "q37", by.y = "zipcode")
+```
+
+
+```{r}
+## Convert dataframe to tidydata format (Reshaping the data)
+
+# convert data frame into a data table for ventura county zipcodes
+survey_data_v <- as.data.table(survey_data_v)
+
+# reshape data from wide to long format
+survey_data_v_tidy <- survey_data_v %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer")
+
+
+# repeat for sb county zipcodes
+survey_data_sb <- as.data.table(survey_data_sb)
+
+# reshape data from wide to long format
+survey_data_sb_tidy <- survey_data_sb %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer")
+
+
+# repeat for combined ventura AND sb county zipcodes
+survey_data_sbv <- as.data.table(survey_data_sbv)
+
+# reshape data from wide to long format
+survey_data_sbv_tidy <- survey_data_sbv %>% 
+  melt(id.vars = c("response_id", "response_type", "finished"), 
+       variable.name = "question", 
+       value.name = "answer")
+
+```
+
+
+
+```{r}
+## Filter Survey Response Type
+
+# Response Types Key:
+# 0 = speeders (time removal)
+# 1 = completes (approved by our team)
+# 2 = removed by our team for replacement (flagged for not answering ranking questions, but otherwise fine)
+# 3 = response collected via our own outreach (QRcode/email/social media)
+
+# (Note: Qualtrics Paid Responses = 0,1,2)
+
+# remove speeders responses (response type: 0) from survey dataframes - for ventura county zipcodes
+survey_data_v_tidy_filtered <- survey_data_v_tidy %>% 
+  filter(response_type != 0)
+
+# repeat for sb county zipcodes
+survey_data_sb_tidy_filtered <- survey_data_sb_tidy %>% 
+  filter(response_type != 0)
+
+# repeat for ventura AND sb county combined zipcodes
+survey_data_sbv_tidy_filtered <- survey_data_sbv_tidy %>% 
+  filter(response_type != 0)
+```
+
+
+# Chi-Square Test Assumptions & Hypothesis Testing
+
+A chi-square test for independence will be used to compare proportions/count data collected in the survey and determine whether or not there is an association between word choice/terminology and a residents’ support for kelp aquaculture.
+
+*Assumptions for Chi-Square Test:*
+
+A Chi-Square test of independence is used to determine whether or not there is a significant association between two categorical variables.
+This test makes four assumptions:
+
+*Assumption 1:* Both variables are categorical.
+
+It’s assumed that both variables are categorical. That is, both variables take on values that are names or labels.
+
+Our variables: word choice/terminology (either kelp farming, seaweed farming, kelp aquaculture, or seaweed aquaculture) and support for kelp aquaculture (five likert scale categories from strongly opposed to strongly supportive)
+
+*Assumption 2:* All observations are independent.
+
+It’s assumed that every observation in the dataset is independent. That is, the value of one observation in the dataset does not affect the value of any other observation.
+
+*Assumption 3:* Cells in the contingency table are mutually exclusive.
+
+It’s assumed that individuals can only belong to one cell in the contingency table. That is, cells in the table are mutually exclusive – an individual cannot belong to more than one cell.
+
+*Assumption 4:* Expected value of cells should be 5 or greater in at least 80% of cells.
+
+It’s assumed that the expected value of cells in the contingency table should be 5 or greater in at least 80% of cells and that no cell should have an expected value less than 1.
+
+
+
+# 1. & 2. Wording Experiment: 
+
+*Question:* Does word choice/terminology influence residents' support for kelp aquaculture?
+
+*Hypothesis:*  Yes, people will be more supportive of ‘kelp farming’ than of 'kelp aquaculture', 'seaweed aquaculture', and 'seaweed farming' because of its associations with an important native Californian species and since farming is a more familiar term.
+
+*Statistical Test:* Chi-square test of Q2, Q4, Q6, Q8
+
+
+## Chi-Square Test for Ventura County residents ONLY
+```{r}
+# Create a table with both counts & proportions
+support_counts_v <- survey_data_v_tidy_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  mutate_all(na_if,"")
+
+support_counts_v_table <- support_counts_v %>% 
+  tabyl(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  select(-NA_)
+```
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+support_v_ct <- support_counts_v_table %>% 
+  column_to_rownames(var = "question")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+support_v_x2 <- chisq.test(support_v_ct)
+support_v_x2
+
+# Get the chi-square test results to call outputs in-line
+support_v_tidy <- tidy(support_v_x2)
+```
+
+The p-value of the test is 0.3301. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is an association between word choice/terminology and support for kelp aquaculture, for Ventura County residents.
+
+## Chi-Square Test for SB County residents ONLY
+```{r}
+# Create a table with both counts & proportions
+support_counts_sb <- survey_data_sb_tidy_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  mutate_all(na_if,"")
+
+support_counts_sb_table <- support_counts_sb %>% 
+  tabyl(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  select(-NA_)
+```
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+support_sb_ct <- support_counts_sb_table %>% 
+  column_to_rownames(var = "question")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+support_sb_x2 <- chisq.test(support_sb_ct)
+support_sb_x2
+
+# Get the chi-square test results to call outputs in-line
+support_sb_tidy <- tidy(support_sb_x2)
+```
+
+The p-value of the test is 0.4502. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is an association between word choice/terminology and support for kelp aquaculture, for Santa Barbara County residents.
+
+Since the chi-square tests revealed no association between word choice/terminology and support for kelp aquaculture for both Ventura and Santa Barbara County residents individually, we can now combine the datasets and perform a chi-square test once more for further analysis.
+
+## Chi-Square Test for SB & Ventura County residents combined
+```{r}
+# Create a table with both counts & proportions
+support_counts <- survey_data_sbv_tidy_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  mutate_all(na_if,"")
+
+support_counts_table <- support_counts %>% 
+  tabyl(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  select(-NA_)
+
+```
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+support_ct <- support_counts_table %>% 
+  column_to_rownames(var = "question")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+support_x2 <- chisq.test(support_ct)
+support_x2
+
+# Get the chi-square test results to call outputs in-line
+support_tidy <- tidy(support_x2)
+```
+
+The p-value of the test is 0.3543. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is an association between word choice/terminology and support for kelp aquaculture.
+
+There is not a significant association between word choice and whether a Santa Barbara and Ventura County residents are supportive of kelp aquaculture ($\chi$^2^(`r support_tidy$parameter`) = `r round(support_tidy$statistic,2)`, *p* = `r format(support_tidy$p.value, scientific = TRUE, digits = 3)`). Therefore, we accept the null hypothesis that there is no association between word choice and whether a Santa Barbara or Ventura County resident is supportive of kelp aquaculture. 
+
+AND thus we can now group answers from Q2,4,6,8 together for further analyses, assuming that this combined data set reflects respondents support or opposition to the synonomous terms of kelp/seaweed aquauculture and kelp/seaweed farming.
+
+
+
+
+# 3. Perception: 
+
+*Question:* Does perception of aquaculture change when specifying seaweed aquaculture? 
+
+*Hypothesis:* Yes, perception of seaweed aquaculture will be more positive than aquaculture more broadly. 
+
+*Statistical Test:* Chi-square test of Q12 vs. Q13
+
+```{r}
+# Pull Q 12 and Q13 on perception of aquaculture and seaweed aquaculture, assign numerical value to categorical response
+perception_counts <- survey_data_sbv_tidy_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q12" | 
+         question == "q13") %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  mutate_all(na_if,"")
+
+# Create a table with counts
+perception_counts_table <- perception_counts %>% 
+  tabyl(question, answer) %>% 
+  filter(question == "q12" | 
+         question == "q13") %>% 
+  select(-NA_)
+```
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+perception_ct <- perception_counts_table %>% 
+  column_to_rownames(var = "question")
+
+# Chi-square test for independence: Is there an association between a more positive perception of aquaculture and the specification of aquaculture being for seaweed?
+perception_x2 <- chisq.test(perception_ct)
+perception_x2
+
+# Get the chi-square test results to call outputs in-line
+perception_tidy <- tidy(perception_x2)
+```
+#Relationship Between Perception and Support:
+Q: Is support related to more positive perceptions of seaweed aquaculture?
+Hypothesis: Yes, supporters will have more positive perceptions of seaweed aquaculture.
+Assumptions: If Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined
+Statistical Test: ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13(seaweed aquaculture)
+
+```{r}
+#Visualize Q 12 and 13
+perception_counts_answer <-perception_counts %>% 
+  group_by(question) %>% 
+  mutate(answer_counts = count(n(answer)))
+
+ggplot(perception_counts, aes(answer, value)) +   
+  geom_bar(aes(fill = question), position = "dodge", stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+# (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
+#ggplot(data = perception_counts, aes(x = q13)) +
+ # geom_bar()
+```
+
+
+```{r}
+# Combine Q 2, 4, 6 & 8
+#perpception_support_sbv <-survey_data_sbv_tidy_filtered %>%
+  #mutate(support_combined = coalesce(,y,z)) %>%
+        # select(a, mycol)
+```
+
+# 5. Knowledge: 
+
+*Questions:* Are residents familiar with kelp aquaculture? 
+
+*Hypothesis:* The majority of the public have not been exposed to the idea of seaweed aquaculture.
+
+*Statistical Tests:* Chi-square test Q10 & Mann-Whitney U on Q16, Q17 
+
+
+
+
+
+
+
+
