@@ -469,6 +469,10 @@ m1 <- polr(factor(q2) ~q10, data=ordinal_log_reg_2, Hess =TRUE)
 summary(m1)
 ```
 
+The output shows that for respondents who very familiar with aquaculture, the log odds of being unlikely to support aquaculture is 0.9079 points lower than respondents who are not familiar with aquaculture.
+
+
+
 
 ```{r understand odds ratio}
 #interpret odds ratio. Outside parenthesis are important 
