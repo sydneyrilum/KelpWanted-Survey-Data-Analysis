@@ -372,11 +372,11 @@ combined_support_answers$answer <- factor(combined_support_answers$answer, level
 # percent stacked barchart
 ggplot(data = combined_support_answers, 
        aes(fill = forcats::fct_rev(answer),
-           y = proportion,
-           x = question)) +
+           x = proportion,
+           y = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
-  scale_y_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent) +
   scale_fill_brewer(type = "div",
                     palette = "RdYlGn",
                     direction = -1) +

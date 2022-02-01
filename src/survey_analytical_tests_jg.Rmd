@@ -480,7 +480,7 @@ exp(cbind(coef(m1), t(ci)))
 ```{r predicted probabilities to understand odds ratio}
 newdf <- data.frame(q10 =c(1, 2, 3, 4))
 (phat <- predict(object = m1, newdf, type = "p"))
-
+```
 
 
 
