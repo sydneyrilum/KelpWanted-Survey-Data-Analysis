@@ -639,20 +639,20 @@ perception_aq_stacked_bar <- survey_data_tidy_long %>%
 
 
 # Specify categorical order of questions and answers
-perception_aq_stacked_bar$answer <- factor(perception_aq_stacked_bar$answer, levels = c("Very Negative", 
-                                                                                        "Negative", 
+perception_aq_stacked_bar$answer <- factor(perception_aq_stacked_bar$answer, levels = c("Unsure/Not familiar", 
+                                                                                        "Very Negative", 
+                                                                                        "Negative",
                                                                                         "Neutral",
                                                                                         "Positive",
-                                                                                        "Very Positive",
-                                                                                        "Unsure/Not familiar"))
-perception_aq_stacked_bar$question <- factor(perception_aq_stacked_bar$question, levels = c("seaweed aquaculture",
-                                                                                            "aquaculture"))
+                                                                                        "Very Positive"))
+perception_aq_stacked_bar$question <- factor(perception_aq_stacked_bar$question, levels = c("aquaculture",
+                                                                                            "seaweed aquaculture"))
 
 # percent stacked barchart
 ggplot(data = perception_aq_stacked_bar, 
        aes(fill = forcats::fct_rev(answer),
-           x = proportion,
-           y = question)) +
+           y = proportion,
+           x = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
   #geom_text(data = perception_aq_boxplot_2,
@@ -662,19 +662,16 @@ ggplot(data = perception_aq_stacked_bar,
             #position = position_fill(vjust=0.5),
             #color = 'gray25',
             #size = 3.5) +
-  scale_x_continuous(labels = scales::percent) +
-  scale_fill_brewer(type = "div",
-                    palette = "RdYlGn",
-                    direction = -1) +
-  #scale_fill_manual(values = c("red", "orange", "yellow", "green", "blue"),
-                    #breaks = c("Very Negative", "Negative", "Neutral", "Positive", "Very Positive")) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
   labs(x = "",
        y = "",
        title = "In general, how positive or negative is your view of ______ ?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
-        legend.position = "bottom") +
-  guides(fill=guide_legend(nrow=1,byrow=TRUE))
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
 
 ```
 
