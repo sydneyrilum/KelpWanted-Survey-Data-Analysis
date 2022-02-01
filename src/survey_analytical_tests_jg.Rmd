@@ -21,9 +21,13 @@ library(naniar)      # replace NA tools
 library(patchwork)   # for stacking plots
 library(kableExtra)  # for making tables
 library(broom)
-library(stats)
-#library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+library(MASS)         #for ordered logist or probit regression
+library(conflicted)  # allows for choosing preference over conflicting functions from different packages
 library(RColorBrewer)
+conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
+conflict_prefer("filter", "dplyr")
+conflict_prefer("chisq.test", "janitor")
+conflict_prefer("fisher.test", "janitor")
 ```
 
 ```{r}
@@ -182,8 +186,300 @@ k_p_heard_x2
 k_p_x2_tidy <- tidy(k_p_heard_x2)
 ```
 
+The data violate the assumptions of the chi-square test (80% of the expected values >5). The fisher exact test will be used instead. 
+
+```{r 16 v. 13 fisher test}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+
+fisher_Q16 <- fisher.test(k_p_heard_ct)
+fisher_Q16 <- tidy(fisher_Q16)
+```
+
+The null hypothesis was rejected using the Fisher exact test (p-value = 3..7x10-7, alpha =0.05). There is a relationship between hearning about aquaculture perceptions of aquaculture.
+
+#### Q17 (seen aq) v. Q13 (perception)
+
+```{r dataset Q16(heard of aq) v Q13- grouped}
+#create subset from tidy filtered data
+#keep only question 16 and 13
+k_p_seen <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer) %>% 
+  filter(question == "q17"|
+           question == "q13") %>% 
+#switch to wide format with response id as the link
+ spread(question, answer) %>% 
+  #group responses
+  mutate(q13= case_when(
+    q13 == "Very Negative" ~ "Negative",
+    q13 == "Negative" ~ "Negative",
+    q13 =="Neutral" ~ "Neutral",
+    q13 == "Positive" ~ "Positive",
+    q13 =="Very Positive" ~ "Positive",
+    q13 =="Unsure/Not familiar" ~ "Unsure/Not familiar",
+  ))
+
+ggplot(k_p_seen, aes(fill= q13, x = q17))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FFFFBF", "#2C7BB6", "#999999"))
+  
+#put counts into table format
+k_p_seen_table<- k_p_seen %>% 
+  tabyl(q17, q13) 
+```
+
+The data did not meet the assumptions of the chi-sqare test(80% of expected values >5). Data was tested using the Fisher exact test instead. 
+
+```{r 17 v. 13 fishertest}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+k_p_seen_ct <- k_p_seen_table %>% 
+  column_to_rownames(var = "q17")
+
+fisher_Q17 <- fisher.test(k_p_seen_ct)
+fisher_Q17 <- tidy(fisher_Q17)
+```
 
 
+The Fisher exact test rejected the null hypothesis- that the two variables are independent (p-vale= 0.031, alpha =0.05). 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Regression Models : Relationship between Knowledge and Support 
+####Relationship Between knowledge and support
+
+*Question:* Is support related to more familiarity/knowledge of seaweed aquaculture?
+
+*Hypothesis:* Those who are familiar with aquaculture will have more polarized opinions. Those less familiar will have more positive views of kelp aquaculture. 
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception of seaweed aquaculture (Q13)
+
+dependent variable = support (Q2)
+independent variable = perception (Q13)
+
+
+```{r regression table }
+# create data frame with Q2 and Q10
+
+ordinal_log_reg_knowledge_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q13" ~ "q13")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very NegativeNegative" ~ -2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_knowledge <- ordinal_log_reg_knowledge_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q13 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_knowledge_table<- ordinal_log_reg_knowledge %>% 
+  tabyl(q2, q13) %>% 
+  column_to_rownames(var = "q2")
+
+summary(ordinal_log_reg_knowledge_table)
+
+```
+
+
+```{r create ordinal logistic model}
+#use polr to create a logit model to understand how familiarity influences expansion
+m2 <- polr(factor(q2) ~q13, data=ordinal_log_reg_knowledge, Hess =TRUE)
+summary(m2)
+```
+
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci <- confint(m2))
+exp(cbind(coef(m2), t(ci)))
+```
+
+
+```{r predicted probabilities to understand odds ratio}
+newdf_2 <- data.frame(q13 =c(1, 2, 3, 4, 5))
+(phat <- predict(object = m2, newdf_2, type = "p"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####Relationship Between Perception and Support: 
+
+
+*Question:* Is support related to more positive perceptions of seaweed aquaculture?
+
+*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
+
+
+dependent variable = support (Q2)
+independent variable = knowledge (Q10)
+
+
+```{r regression table }
+# create data frame with Q2 and Q10
+
+ordinal_log_reg_2_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q10") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q10" ~ "q10")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very familiar" ~ 1,
+    answer == "Basic understanding" ~ 2,
+    answer == "Heard of it, but don't know details" ~ 3,
+    answer == "Never heard of it" ~ 4)) %>%
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_2 <- ordinal_log_reg_2_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q10 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_2_table<- ordinal_log_reg_2 %>% 
+  tabyl(q2, q10) %>% 
+  column_to_rownames(var = "q2")
+
+summary(ordinal_log_reg_2_table)
+
+```
+
+
+```{r create ordinal logistic model}
+#use polr to create a logit model to understand how familiarity influences expansion
+m1 <- polr(factor(q2) ~q10, data=ordinal_log_reg_2, Hess =TRUE)
+summary(m1)
+```
+
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci <- confint(m1))
+exp(cbind(coef(m1), t(ci)))
+```
+
+
+```{r predicted probabilities to understand odds ratio}
+newdf <- data.frame(q10 =c(1, 2, 3, 4))
+(phat <- predict(object = m1, newdf, type = "p"))
 
 
 
