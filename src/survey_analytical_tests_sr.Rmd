@@ -314,7 +314,7 @@ AND thus we can now group answers from Q2,4,6,8 together for further analyses, a
 
 *Hypothesis:* 
 
-*Statistical Test:* Chi-square test of Q12 vs. Q13
+*Statistical Test:* t-test of Q12 vs. Q13
 
 
 
