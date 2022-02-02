@@ -376,7 +376,7 @@ There is not a significant difference in perception whether a Santa Barbara and 
 Q: Is support related to more positive perceptions of seaweed aquaculture?
 Hypothesis: Yes, supporters will have more positive perceptions of seaweed aquaculture.
 Assumptions: If Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined
-Statistical Test: ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13(seaweed aquaculture) 
+Statistical Test: ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13(seaweed aquaculture)
 
 ```{r}
 #Visualize Q 12 and 13
