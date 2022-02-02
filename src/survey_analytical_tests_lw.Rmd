@@ -332,6 +332,13 @@ perception_counts <- survey_data_sbv_tidy_filtered %>%
     answer == "Very Positive" ~ 5,
     answer == "Unsure/Not familiar" ~ 6)) %>%
   mutate_all(na_if,"")
+# get means
+perception_q12<- perception_counts %>% 
+  filter(question == "q12") %>% 
+  pull(number)
+perception_q13 <- perception_counts %>% 
+  filter(question == "q13") %>% 
+  pull(number)
 
 # Create a table with counts
 perception_counts_table <- perception_counts %>% 
@@ -339,6 +346,8 @@ perception_counts_table <- perception_counts %>%
   filter(question == "q12" | 
          question == "q13") %>% 
   select(-NA_)
+perception_counts_table
+# atleast 80% of cells <=5 is satisfied
 ```
 
 ```{r}
@@ -353,6 +362,16 @@ perception_x2
 # Get the chi-square test results to call outputs in-line
 perception_tidy <- tidy(perception_x2)
 ```
+```{r}
+perception_ttest <- t.test(perception_q12, perception_q13)
+
+perception_ttest_tidy <-tidy(perception_ttest)
+```
+
+The p-value of the Welch Two-sample t-test is 0.61. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is a statistically significant difference between the perception of aquaculture and seaweed aquaculture.
+
+There is not a significant difference in perception whether a Santa Barbara and Ventura County residents are supportive of aquaculture when seaweed is specified as the type, *p* = `r format(perception_ttest_tidy$p.value, scientific = TRUE, digits = 3)`). Therefore, fail to reject the alternative hypothesis that seaweed would make respondents perception more positive and we accept the null hypothesis that there is no significant difference between aquaculture being specified as seaweed aquaculture. 
+
 #Relationship Between Perception and Support:
 Q: Is support related to more positive perceptions of seaweed aquaculture?
 Hypothesis: Yes, supporters will have more positive perceptions of seaweed aquaculture.
