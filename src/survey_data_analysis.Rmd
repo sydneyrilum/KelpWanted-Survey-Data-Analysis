@@ -28,7 +28,7 @@ library(kableExtra)  # for making tables
 #conflict_prefer("filter", "dplyr")
 ```
 
-## Data Set-up & Cleaning 
+# Data Set-up & Cleaning 
 
 ```{r}
 # Read in combined survey data
@@ -190,6 +190,8 @@ survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_long %>%
   filter(response_type != 0)
 ```
 
+## Save Finalized Data Frames as csv 
+
 ```{r}
 write.csv(survey_data_tidy_sbv_filtered,
           file = here("data", "survey_data_tidy_sbv_filtered.csv"))
@@ -228,7 +230,7 @@ write.csv(survey_data_tidy_sbv_long_filtered,
 #st_crs(us_zipcodes) # NA
 ```
 
-
+# Data Analysis
 
 ## Average time to take survey 
 
@@ -245,9 +247,6 @@ median((survey_data_tidy$duration_in_seconds)/60) # positively skewed
 min((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 max((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 ```
-
-
-
 
 
 ## Wording Experiment - Does word choice influence residents' support for kelp aquaculture? 
@@ -380,7 +379,7 @@ wordcloud_seaweed_farming_2 <- wordcloud(words = seaweed_farming_test$q3,
                                          freq = seaweed_farming_test$n,
                                          min.freq = 1,
                                          random.order = FALSE,
-                                         colors = brewer.pal(8, "Dark2"))
+                                         colors = brewer.pal(8, "Dark2")) 
 ```
 
 ```{r}
@@ -453,8 +452,7 @@ wordcloud_seaweed_aquaculture_2 <- wordcloud(words = seaweed_aquaculture_test$q7
                                             freq = seaweed_aquaculture_test$n,
                                             min.freq = 1,
                                             random.order = FALSE,
-                                            random.color = FALSE, 
-                                            colors= c("seagreen4", "seagreen","seagreen3","palegreen2","palegreen3"))
+                                            colors = brewer.pal(8, "Dark2"))
 ```
 
 ```{r}
@@ -493,8 +491,7 @@ wordcloud_kelp_aquaculture_2 <- wordcloud(words = kelp_aquaculture_test$q9,
                                          freq = kelp_aquaculture_test$n,
                                          min.freq = 1,
                                          random.order = FALSE,
-                                         random.color = FALSE, 
-                                         colors= c("royalblue4", "steelblue1","steelblue2","steelblue3","steelblue"))
+                                         colors = brewer.pal(8, "Dark2"))
 ```
 
 ```{r}
@@ -524,7 +521,7 @@ wordclouds +
 # q11_7 - regenerative aquaculture
 # q11_8 - seaweed mariculture
 
-# make new subset of data
+# make new subset of data (WITH ALL SURVEY RESPONSES)
 wording_exp_rank <- survey_data_tidy %>% 
   select(q11_1:q11_8) %>% 
   mutate_if(is.character,as.numeric) %>% 
@@ -550,24 +547,100 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
   coord_flip() +
   theme_minimal() +
   labs(x = "",
-       y = "Average Ranked Score (from 1 - 6, with 1 being most interested)",
+       y = "Average Ranked Score (from 1 - 6, with 1 being most positive)",
        title = "Terminology Ranked by Most Positive Connotation")
-
-
-### need to add std dev or std error bars???
 
 ```
 
+```{r}
+# Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
+
+# q11_1 - ocean farming
+# q11_2 - seaweed farming
+# q11_3 - kelp farming
+# q11_4 - ocean aquaculture
+# q11_5 - seaweed aquaculture
+# q11_6 - kelp aquaculture
+# q11_7 - regenerative aquaculture
+# q11_8 - seaweed mariculture
+
+
+# make new subset of data USING SBV data ONLY
+wording_exp_rank_2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  mutate_if(is.character,as.numeric) %>% 
+  filter(question == "q11_1"|
+           question == "q11_2"|
+           question == "q11_3"|
+           question == "q11_4"|
+           question == "q11_5"|
+           question == "q11_6"|
+           question == "q11_7"|
+           question == "q11_8") %>% 
+  mutate(question = case_when(
+    question == "q11_1" ~ "ocean farming",
+    question == "q11_2" ~ "seaweed farming",
+    question == "q11_3" ~ "kelp farming",
+    question == "q11_4" ~ "ocean aquaculture",
+    question == "q11_5" ~ "seaweed aquaculture",
+    question == "q11_6" ~ "kelp aquaculture",
+    question == "q11_7" ~ "regenerative aquaculture",
+    question == "q11_8" ~ "seaweed mariculture")) %>% 
+  drop_na() %>% 
+  group_by(question) %>% 
+  summarize(mean = round(mean(answer, na.rm = TRUE),2)) %>% # calculate mean rank score for each answer choice
+  mutate(question = fct_reorder(question, mean, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
+
+
+ggplot(data = wording_exp_rank_2, aes(x = mean, 
+                                      y = question,
+                                      fill = mean)) +
+  geom_bar(stat = "identity",
+           fill = "skyblue2") +
+  geom_text(aes(label = mean),
+            hjust = 1.5) +
+  labs(y = "",
+       x = "Average Ranked Score (from 1 - 6, with 1 being most positive)",
+       title = "Terminology Ranked by Most Positive Connotation") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "none") 
+
+#ggsave("rank_terms.png")
+```
 
 
 ## Knowledge 
 
-```{r}
+```{r fig.width = 5}
 # (Q10) - How familiar are you with aquaculture?
 
-ggplot(data = survey_data_tidy, aes(y = q10)) +
-  geom_bar()
+familiarity <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q10") %>% 
+  group_by(answer) %>% 
+  summarize(count = n())
 
+# Specify categorical order of answers
+familiarity$answer <- factor(familiarity$answer, levels = c("Never heard of it",
+                                                            "Heard of it, but don't know details",
+                                                            "Basic understanding",
+                                                            "Very familiar"))
+
+ggplot(data = familiarity, aes(x = count,
+                               y = answer,
+                               fill = answer)) +
+  geom_bar(stat = "identity",
+           fill = "lightsteelblue") + 
+  geom_text(aes(label = count), hjust = 1.5) +
+  labs(x = "count",
+       y = "",
+       title = "How familiar are you with aquaculture?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "none") 
+  
+#ggsave("familiarity.png")
 ```
 
 
@@ -580,7 +653,7 @@ ggplot(data = survey_data_tidy, aes(y = q10)) +
 # (Q12) - In general, how positive or negative is your view of aquaculture?
 # (Q13) - In general, how positive or negative is your view of seaweed aquaculture?
 
-perception_aq_boxplot <- survey_data_tidy_long %>% 
+perception_aq_boxplot <- survey_data_tidy_sbv_long_filtered %>% 
   filter(question == "q12" | question == "q13") %>% 
   mutate(question = case_when( 
     question == "q12" ~ "aquaculture",
@@ -616,7 +689,7 @@ ggplot(data = perception_aq_boxplot,
 
 ```{r}
 # alternative data frame
-perception_aq_stacked_bar <- survey_data_tidy_long %>% 
+perception_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>% 
   select(question, answer) %>% 
   filter(question == "q12" | question == "q13") %>% 
   mutate(question = case_when( 
@@ -629,7 +702,6 @@ perception_aq_stacked_bar <- survey_data_tidy_long %>%
     answer == "Positive" ~ 4,
     answer == "Very Positive" ~ 5,
     answer == "Unsure/Not familiar" ~ 6)) %>%
-  #replace_with_na(replace = list(number = -999)) %>% 
   drop_na() %>% 
   group_by(question, answer, number) %>% 
   summarize(count = n()) %>% 
@@ -655,13 +727,6 @@ ggplot(data = perception_aq_stacked_bar,
            x = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
-  #geom_text(data = perception_aq_boxplot_2,
-            #aes(x = freq, 
-               # label = proportion, 
-               # group = answer),
-            #position = position_fill(vjust=0.5),
-            #color = 'gray25',
-            #size = 3.5) +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
   labs(x = "",
@@ -675,40 +740,12 @@ ggplot(data = perception_aq_stacked_bar,
 
 ```
 
-
-
 ```{r}
 # Descriptive Statistics
-perception_aq_stats <- survey_data_tidy %>% 
-  select(q12:q13) %>% 
-  mutate(q12 = case_when( 
-    q12 == "Very Negative" ~ -2,
-    q12 == "Negative" ~ -1,
-    q12 == "Neutral" ~ 0,
-    q12 == "Positive" ~ 1,
-    q12 == "Very Positive" ~ 2,
-    q12 == "Unsure/Not familiar" ~ -999)) %>%
-  mutate(q13 = case_when( 
-    q13 == "Very Negative" ~ -2,
-    q13 == "Negative" ~ -1,
-    q13 == "Neutral" ~ 0,
-    q13 == "Positive" ~ 1,
-    q13 == "Very Positive" ~ 2,
-    q13 == "Unsure/Not familiar" ~ -999)) %>% 
-  replace_with_na(replace = list(q12 = -999,
-                                 q13 = -999)) %>% 
-  summarize(aq_mean = mean(q12, na.rm = TRUE),
-            aq_median = median(q12, na.rm = TRUE),
-            aq_sd = sd(q12, na.rm = TRUE),
-            seaweed_aq_mean = mean(q13, na.rm = TRUE),
-            seaweed_aq_median = median(q13, na.rm = TRUE),
-            seaweed_aq_sd = sd(q13, na.rm = TRUE)) 
-
-
-# using long dataframe format????
-
-perception_aq_counts <- survey_data_tidy_long %>% 
-  filter(question == "q12" | question == "q13") %>% 
+perception_aq_stats <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q12" |
+           question == "q13") %>% 
   mutate(answer = case_when( 
     answer == "Very Negative" ~ -2,
     answer == "Negative" ~ -1,
@@ -716,9 +753,12 @@ perception_aq_counts <- survey_data_tidy_long %>%
     answer == "Positive" ~ 1,
     answer == "Very Positive" ~ 2,
     answer == "Unsure/Not familiar" ~ -999)) %>%
-  replace_with_na(replace = list(answer = -999)) 
-#%>% 
-#  summarize()
+  replace_with_na(replace = list(answer = -999)) %>% 
+  drop_na() %>% 
+  group_by(question) %>% 
+  summarize(mean = mean(answer),
+            median = median(answer),
+            sd = sd(answer))
   
 ```
 
@@ -730,7 +770,7 @@ perception_aq_counts <- survey_data_tidy_long %>%
 # Q23_1 - Q23_7
 # To what extent do you agree with each of the following statements?
 
-environ_impacts <- survey_data_tidy_long %>% 
+environ_impacts <- survey_data_tidy_sbv_long_filtered %>% 
   select(question, answer) %>% 
   filter(question == "q23_1" | 
            question == "q23_2" |
