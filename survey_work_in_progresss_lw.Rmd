@@ -1,0 +1,144 @@
+---
+title: "Survey Work In Progress"
+author: "Laurel Wee"
+date: "2/1/2022"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(data.table)  # advanced pivot_table tools
+library(naniar)      # replace NA tools
+#library(sf)          # read in shapefiles
+#library(tmap)        # interactive maps
+#library(zipcodeR)    # for zipcode assignment by county
+#library(raster)      # for mapping raster layers
+#library(dplyr)       # needed ONLY if working on a windows computer
+#library(ggwordcloud) # create wordcloud plots
+library(patchwork)   # for stacking plots
+library(kableExtra)  # for making tables
+library(broom)
+library(MASS)         #for ordered logist or probit regression
+library(conflicted)  # allows for choosing preference over conflicting functions from different packages
+library(RColorBrewer)
+conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
+conflict_prefer("filter", "dplyr")
+conflict_prefer("chisq.test", "janitor")
+conflict_prefer("fisher.test", "janitor")
+```
+
+```{r}
+#load in compiled data files 
+
+survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+```
+## Environmental Impacts
+
+```{r}
+# Environmental Impacts Questions
+
+# Q23_1 - Q23_7
+# To what extent do you agree with each of the following statements?
+
+environ_impacts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q23_1" | 
+           question == "q23_2" |
+           question == "q23_3" |
+           question == "q23_4" |
+           question == "q23_5" |
+           question == "q23_6" |
+           question == "q23_7") %>% 
+  mutate(question = case_when( 
+    question == "q23_1" ~ "...has negative impacts on marine ecosystems.", #risk
+    question == "q23_2" ~ "...improves water quality nearby.", #benefit
+    question == "q23_3" ~ "...infrastructure poses a risk to marine life.", #risk
+    question == "q23_4" ~ "...infrastructure has positive impacts on marine ecosystems.", #benefit
+    question == "q23_5" ~ "...has positive impacts on marine ecosystems.", #take out because only qualtrics was asked
+    question == "q23_6" ~ "...causes bad smells nearby.", #risk
+    question == "q23_7" ~ "...is visually appealing.")) %>% #benefit
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  #replace_with_na(replace = list(number = -999)) %>% 
+  drop_na() %>%                                            # drop NAs (counts of those who skipped question)
+  #mutate_all(na_if, "") %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count))*100) %>% 
+  ungroup() 
+
+# Specify categorical order of answers
+environ_impacts$answer <- factor(environ_impacts$answer, levels = c("Don't know",
+                                                                    "Strongly Disagree", 
+                                                                    "Disagree", 
+                                                                    "Neutral",
+                                                                    "Agree",
+                                                                    "Strongly Agree"
+                                                                    ))
+
+environ_impacts_risk <- environ_impacts %>% 
+  filter(question == "...has negative impacts on marine ecosystems." |
+           question == "...infrastructure poses a risk to marine life." |
+           question == "...causes bad smells nearby.")
+
+environ_impacts_benefit <- environ_impacts %>% 
+  filter(question == "...improves water quality nearby."|
+           question == "...infrastructure has positive impacts on marine ecosystems."|
+           question == "...is visually appealing.")
+```
+
+
+```{r}
+# percent stacked barchart
+ggplot(data = environ_impacts_benefit, 
+       aes(fill = forcats::fct_rev(answer), 
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "fill",
+           stat = "identity", 
+           width = .8) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(position = "top") +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0"))+
+  labs(x = "",
+       y = "",
+       title = "Seaweed Aquaculture...") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom",
+        #axis.text.x=element_blank()
+        )+
+  guides(fill=guide_legend(nrow=1,byrow=TRUE))
+
+
+ggplot(data = environ_impacts_risk, 
+       aes(fill = forcats::fct_rev(answer), 
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "fill",
+           stat = "identity",
+           width = .8) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_x_discrete(position = "right") +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0"))+
+  labs(x = "",
+       y = "",
+       title = "Seaweed Aquaculture...") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "bottom",
+        #axis.text.x=element_blank()
+        )+
+  guides(color = guide_legend(reverse=TRUE),fill=guide_legend(nrow=1,byrow=TRUE))
+```
