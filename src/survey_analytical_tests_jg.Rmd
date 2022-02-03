@@ -488,7 +488,161 @@ newdf <- data.frame(q10 =c(1, 2, 3, 4))
 
 
 
+### Demographics 
 
+Comparison of our survey demographics with demographics from Santa Barbara and Ventura Counties. 
+
+```{r}
+#values from ACS 2019 combined for SB and V counties
+sex_ratio_female_to_male <- 1.01
+total_pop <- 1292505
+total_female <- 650714
+total_male <- 641791
+
+#load American Community Survey 2019 Data
+ACS_age <- read.csv(here("data", "census", "age_range.csv"))
+ACS_sex <- read.csv(here("data", "census", "total_population.csv"))
+ACS_age <- ACS_age %>% 
+  mutate(proportion = Total/total_pop)
+
+male_dist <- read.csv(here("data", "census", "male_age proportions.csv")) 
+colnames(male_dist) <- c("Group", "Santa Barbara", "Ventura", "Total")
+male_dist <- male_dist%>% 
+  mutate(proprotion = Total/total_male) %>% 
+      mutate(Group = case_when(Group == "Under 5 years" ~"0-5",
+                           Group == "5 to 9 years" ~ "5-9",
+                           Group == "10 to 14 years" ~"10-14",
+                           Group == "15 to 19 years" ~"15-19",
+                           Group == "20 to 24 years" ~"20-24",
+                           Group == "25 to 29 years" ~"25-29",
+                           Group == "30 to 34 years" ~"30-34",
+                           Group == "35 to 39 years" ~"34-39",
+                           Group == "40 to 44 years" ~"40-44",
+                           Group == "45 to 49 years" ~"45-49",
+                           Group == "50 to 54 years" ~"50-54",
+                           Group == "55 to 59 years" ~"55-59",
+                           Group == "60 to 64 years" ~"60-64",
+                           Group == "65 to 69 years" ~ "65-69",
+                           Group == "70 to 74 years" ~ "70-74",
+                           Group == "75 to 79 yeras" ~ "75-79",
+                           Group == "80 to 84 years" ~ "80-84",
+                           Group == "85 and over" ~ "84+"))%>% 
+  filter(!(Group %in% c("0-5","5-9","10-14","15-19")))
+
+
+female_dist <- read.csv(here("data", "census", "female_age_total.csv")) 
+colnames(female_dist) <- c("Group", "Santa Barbara", "Ventura", "Total")
+  
+female <-female_dist %>% 
+    mutate(proprotion = Total/total_female) %>% 
+    mutate(Group = case_when(Group == "Under 5 years" ~"0-5",
+                           Group == "5 to 9 years" ~ "5-9",
+                           Group == "10 to 14 years" ~"10-14",
+                           Group == "15 to 19 years" ~"15-19",
+                           Group == "20 to 24 years" ~"20-24",
+                           Group == "25 to 29 years" ~"25-29",
+                           Group == "30 to 34 years" ~"30-34",
+                           Group == "35 to 39 years" ~"34-39",
+                           Group == "40 to 44 years" ~"40-44",
+                           Group == "45 to 49 years" ~"45-49",
+                           Group == "50 to 54 years" ~ "50-54",
+                           Group == "55 to 59 years" ~ "55-59",
+                           Group == "60 to 64 years" ~ "60-64",
+                           Group == "65 to 69 years" ~ "65-69",
+                           Group == "70 to 74 years" ~ "70-74",
+                           Group == "75 to 79 years" ~ "75-79",
+                           Group == "80 to 84 years" ~ "80-84",
+                           Group == "85 and over" ~ "85+")) %>% 
+  filter(!(Group %in% c("0-5","5-9","10-14","15-19")))
+
+ggplot(data = male_dist, 
+       aes(x= age_group, y = proportion)) +
+  geom_bar(stat = "identity")
+
+
+
+dems <- survey_data_tidy_sbv_filtered %>% 
+  select(q41,q40, q39, q38, q37, q36, q35, q34, q33, q32, q31) 
+
+dems$q31 <- as.integer(dems$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+#age and sex 
+
+#women age plot
+female <- dems %>% 
+  select(q31, q32) %>% 
+  filter(q32 == "Woman") %>% 
+  mutate(q31= 2022- q31) 
+
+
+female$age_group <- cut(female$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+female$age_group <- as.character(female$age_group)
+
+female <- female %>%
+  mutate(age_group = case_when(age_group == "25-29" ~"25-34", 
+                                age_group == "30-34" ~"25-34",
+                                age_group == "35-39" ~ "35-44",
+                                age_group == "40-44" ~ "40-44",
+                                age_group == "45-49" ~ "45-54",
+                                age_group == "50-54" ~ "45-54",
+                                age_group == "65-69" ~ "65-74", 
+                                age_group == "70-74" ~ "65-74",
+                                TRUE ~ age_group))
+female$age_group <- as.factor(female$age_group)
+  
+female <-  female %>% 
+  group_by(age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+# percent stacked barchart
+ggplot(data = female, 
+       aes(x= age_group, y = proportion)) +
+  geom_bar(stat = "identity")
+
+#male age plot
+male <- dems %>% 
+  select(q31, q32) %>% 
+  filter(q32 == "Man") %>% 
+  mutate(q31= 2022- q31) %>% 
+  filter(q31 != 5) 
+
+male$age_group <- cut(male$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+male$age_group <- as.character(male$age_group)
+
+male <- male %>%
+  mutate(age_group = case_when(age_group == "25-29" ~"25-34", 
+                                age_group == "30-34" ~"25-34",
+                                age_group == "35-39" ~ "35-44",
+                                age_group == "40-44" ~ "40-44",
+                                age_group == "45-49" ~ "45-54",
+                                age_group == "50-54" ~ "45-54",
+                                age_group == "65-69" ~ "65-74", 
+                                age_group == "70-74" ~ "65-74",
+                                TRUE ~ age_group))
+male$age_group <- as.factor(male$age_group)
+  
+male <-  male %>% 
+  group_by(age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+ggplot(data = male, 
+       aes(x= age_group, y = proportion)) +
+  geom_bar(stat = "identity")
+```
+
+```{r}
+#race
+
+race <- dems %>% 
+  
+```
 
 
 
