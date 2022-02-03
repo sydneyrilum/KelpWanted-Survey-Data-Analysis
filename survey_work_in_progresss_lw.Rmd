@@ -117,7 +117,7 @@ ggplot(data = environ_impacts_benefit,
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "bottom",
-        #axis.text.x=element_blank()
+        #axis.text.x=element_blank()# if you want to remove the bar labels
         )+
   guides(fill=guide_legend(nrow=1,byrow=TRUE))
 
@@ -138,7 +138,7 @@ ggplot(data = environ_impacts_risk,
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "bottom",
-        #axis.text.x=element_blank()
+        #axis.text.x=element_blank() # if you want to remove the bar labels
         )+
   guides(color = guide_legend(reverse=TRUE),fill=guide_legend(nrow=1,byrow=TRUE))
 ```
