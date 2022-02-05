@@ -763,7 +763,8 @@ wording_exp_rank_2 <- survey_data_tidy_sbv_long_filtered %>%
     question == "q11_8" ~ "seaweed mariculture")) %>% 
   drop_na() %>% 
   group_by(question) %>% 
-  summarize(mean = round(mean(answer, na.rm = TRUE),2)) %>% # calculate mean rank score for each answer choice
+  summarize(mean = round(mean(answer, na.rm = TRUE),2), # calculate mean rank score for each answer choice
+            sd = round(sd(answer, na.rm = TRUE),2)) %>% 
   mutate(question = fct_reorder(question, mean, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
 
 
@@ -1277,6 +1278,114 @@ ggplot(data = swaq_interest,
   #guides(color = guide_legend(reverse=TRUE),
   #       fill = guide_legend(nrow=1, byrow=TRUE))
 ```
+
+## graphs for faculty review
+
+
+```{r}
+## graph 1
+
+# create new data frame
+graph_1 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q23_1" | 
+           question == "q23_3" |
+           question == "q26_3") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+graph_1$answer <- factor(graph_1$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = graph_1, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+
+
+
+```
+
+```{r}
+# graph 2
+graph_2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q24_4" | 
+           question == "q25_1" |
+           question == "q25_4") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+graph_2$answer <- factor(graph_2$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = graph_2, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
 
 
 ## Demographics 
