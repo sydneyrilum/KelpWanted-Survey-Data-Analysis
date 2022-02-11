@@ -59,7 +59,7 @@ sb_zipcodes<-
 sb_ventura_co_zip <- 
   rbind(ventura_zipcodes, sb_zipcodes)
 ```
-
+ 
 ```{r}
 # select survey responses from Ventura County residents ONLY
 survey_data_v <- merge(survey_data_clean, ventura_zipcodes, 
