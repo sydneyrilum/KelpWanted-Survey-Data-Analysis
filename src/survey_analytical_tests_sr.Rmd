@@ -180,21 +180,20 @@ support_counts_v <- survey_data_v_tidy_filtered %>%
          question == "q6" |
          question == "q8") %>% 
   mutate(number = case_when( 
-    answer == "Very Negative" ~ 1,
-    answer == "Negative" ~ 2,
-    answer == "Neutral" ~ 3,
-    answer == "Positive" ~ 4,
-    answer == "Very Positive" ~ 5,
-    answer == "Unsure/Not familiar" ~ 6)) %>%
-  mutate_all(na_if,"")
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>%
+  mutate_all(na_if,"") %>% 
+  drop_na()
 
 support_counts_v_table <- support_counts_v %>% 
   tabyl(question, answer) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
-         question == "q8") %>% 
-  select(-NA_)
+         question == "q8") 
 ```
 
 ```{r}
@@ -212,6 +211,19 @@ support_v_tidy <- tidy(support_v_x2)
 
 The p-value of the test is 0.3301. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is an association between word choice/terminology and support for kelp aquaculture, for Ventura County residents.
 
+## Fisher exact test for Ventura County residents ONLY
+
+The data violate the assumptions of the chi-square test (80% of the expected values >5). The fisher exact test will be used instead. 
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+
+fisher_support_v <- fisher.test(support_v_ct)
+fisher_support_v <- tidy(fisher_support_v)
+```
+
+
+
 ## Chi-Square Test for SB County residents ONLY
 ```{r}
 # Create a table with both counts & proportions
@@ -222,21 +234,20 @@ support_counts_sb <- survey_data_sb_tidy_filtered %>%
          question == "q6" |
          question == "q8") %>% 
   mutate(number = case_when( 
-    answer == "Very Negative" ~ 1,
-    answer == "Negative" ~ 2,
-    answer == "Neutral" ~ 3,
-    answer == "Positive" ~ 4,
-    answer == "Very Positive" ~ 5,
-    answer == "Unsure/Not familiar" ~ 6)) %>%
-  mutate_all(na_if,"")
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>%
+  mutate_all(na_if,"") %>% 
+  drop_na()
 
 support_counts_sb_table <- support_counts_sb %>% 
   tabyl(question, answer) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
-         question == "q8") %>% 
-  select(-NA_)
+         question == "q8") 
 ```
 
 ```{r}
@@ -254,6 +265,20 @@ support_sb_tidy <- tidy(support_sb_x2)
 
 The p-value of the test is 0.4502. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is an association between word choice/terminology and support for kelp aquaculture, for Santa Barbara County residents.
 
+## Fisher exact test for SB County residents ONLY
+
+The data violate the assumptions of the chi-square test (80% of the expected values >5). The fisher exact test will be used instead. 
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+
+fisher_support_sb <- fisher.test(support_sb_ct)
+fisher_support_sb <- tidy(fisher_support_sb)
+```
+
+
+
+
 Since the chi-square tests revealed no association between word choice/terminology and support for kelp aquaculture for both Ventura and Santa Barbara County residents individually, we can now combine the datasets and perform a chi-square test once more for further analysis.
 
 ## Chi-Square Test for SB & Ventura County residents combined
@@ -266,21 +291,20 @@ support_counts <- survey_data_sbv_tidy_filtered %>%
          question == "q6" |
          question == "q8") %>% 
   mutate(number = case_when( 
-    answer == "Very Negative" ~ 1,
-    answer == "Negative" ~ 2,
-    answer == "Neutral" ~ 3,
-    answer == "Positive" ~ 4,
-    answer == "Very Positive" ~ 5,
-    answer == "Unsure/Not familiar" ~ 6)) %>%
-  mutate_all(na_if,"")
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>%
+  mutate_all(na_if,"") %>% 
+  drop_na()
 
 support_counts_table <- support_counts %>% 
   tabyl(question, answer) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
-         question == "q8") %>% 
-  select(-NA_)
+         question == "q8") 
 
 ```
 
@@ -301,39 +325,75 @@ The p-value of the test is 0.3543. Since this p-value is not less than .05, we d
 
 There is not a significant association between word choice and whether a Santa Barbara and Ventura County residents are supportive of kelp aquaculture ($\chi$^2^(`r support_tidy$parameter`) = `r round(support_tidy$statistic,2)`, *p* = `r format(support_tidy$p.value, scientific = TRUE, digits = 3)`). Therefore, we accept the null hypothesis that there is no association between word choice and whether a Santa Barbara or Ventura County resident is supportive of kelp aquaculture. 
 
-AND thus we can now group answers from Q2,4,6,8 together for further analyses, assuming that this combined data set reflects respondents support or opposition to the synonymous terms of kelp/seaweed aquauculture and kelp/seaweed farming.
+
+## Fisher exact test for SB & Ventura County residents combined
+
+The data violate the assumptions of the chi-square test (80% of the expected values >5). The fisher exact test will be used instead. 
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
+
+fisher_support_sbv <- fisher.test(support_ct) # , workspace = 2e8)
+fisher_support_sbv <- tidy(fisher_support_sbv)
+```
 
 
 
 
 
 
-# 3. Perception: 
+#### USE THIS CODE BELOW!!! 
 
-*Question:* Does perception of aquaculture change when specifying seaweed aquaculture? 
+## Chi-Square Test for SB & Ventura County residents combined (WITH COMBINING ANSWER CHOICES)
+```{r}
+# Create a table with both counts & proportions
+support_counts_combined <- survey_data_sbv_tidy_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 1,
+    answer == "Neither opposed nor in support" ~ 2,
+    answer == "Somewhat supportive" ~ 3,
+    answer == "Strongly supportive" ~ 3)) %>%
+  mutate_all(na_if,"") %>% 
+  drop_na()
 
-*Hypothesis:* 
+support_counts_combined_table <- support_counts_combined %>%  
+  tabyl(question, number) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8")   
 
-*Statistical Test:* t-test of Q12 vs. Q13
+```
+
+```{r}
+# Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
+support_combined_ct <- support_counts_combined_table %>% 
+  column_to_rownames(var = "question")
+
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+support_combined_x2 <- chisq.test(support_combined_ct)
+support_combined_x2
+
+# Get the chi-square test results to call outputs in-line
+support_combined_tidy <- tidy(support_combined_x2)
+```
+
+The p-value of the test is 0.1637. Since this p-value is not less than .05, we do not have sufficient evidence to say that there is a significant association between word choice/terminology and support for kelp aquaculture.
+
+X2 (6, N = 386) = 9.2, p > .05
+
+There is not a significant association between word choice and whether a Santa Barbara and Ventura County residents are supportive of kelp aquaculture ($\chi$^2^(`r support_tidy$parameter`) = `r round(support_tidy$statistic,2)`, *p* = `r format(support_tidy$p.value, scientific = TRUE, digits = 3)`). Therefore, we accept the null hypothesis that there is no association between word choice and whether a Santa Barbara or Ventura County resident is supportive of kelp aquaculture. 
 
 
 
+AND thus we can now group answers from Q2,4,6,8 together for further analyses, assuming that this combined data set reflects respondents support or opposition to the synonymous terms of kelp/seaweed aquaculture and kelp/seaweed farming.
 
-# 4. Relationship Between Perception and Support: 
-
-*Question:* Is support related to more positive perceptions of seaweed aquaculture?
-
-*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
-
-*Assumptions:* 
-- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
-- Remove "don't know" answer choice counts
-
-*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
-
-
-dependent variable = support (Q2)
-independent variable = perception (Q13)
 
 ```{r}
 # Combine Q2,4,6,8
@@ -388,6 +448,36 @@ ggplot(data = combined_support_answers,
         legend.position = "right") 
 
 ```
+
+
+
+# 3. Perception: 
+
+*Question:* Does perception of aquaculture change when specifying seaweed aquaculture? 
+
+*Hypothesis:* 
+
+*Statistical Test:* t-test of Q12 vs. Q13
+
+
+
+
+# 4. Relationship Between Perception and Support: 
+
+*Question:* Is support related to more positive perceptions of seaweed aquaculture?
+
+*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
+
+
+dependent variable = support (Q2)
+independent variable = perception (Q13)
+
 
 ```{r}
 # create data frame with Q2 and Q13

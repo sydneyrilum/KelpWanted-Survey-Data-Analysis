@@ -117,7 +117,8 @@ survey_data_tidy_sbv <- as.data.table(survey_data_tidy_sbv)
 
 # use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
 survey_data_tidy_sbv_long <- survey_data_tidy_sbv %>% 
-  melt(id.vars = c("response_id", "response_type", "finished"), 
+  melt(id.vars = c("response_id", "response_type", "finished", "county", 
+                   "q31", "q32", "q33", "q34", "q35", "q36", "q37", "q38", "q39", "q39_7_text", "q40", "q40_8_text"), 
        variable.name = "question", 
        value.name = "answer")
 ```
@@ -330,6 +331,181 @@ wording_exp_stats <- wording_exp %>%
             mean3 = round(mean(answer == 3),3),
             mean4 = round(mean(answer == 4),3),
             mean5 = round(mean(answer == 5),3))
+
+```
+
+
+```{r data viz for Q2,4,6,8}
+# Combine Q2,4,6,8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+# alternative data frame
+support_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "seaweed farming",
+    question == "q4" ~ "kelp farming",
+    question == "q6" ~ "seaweed aquaculture",
+    question == "q8" ~ "kelp aquaculture")) %>% 
+  mutate(number = case_when( 
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+support_aq_stacked_bar$answer <- factor(support_aq_stacked_bar$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+# percent stacked barchart
+ggplot(data = support_aq_stacked_bar, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  #scale_fill_manual(values =c("#2C7BB6","#2C7BB6","#FFFFBF","#FDAE61","#FDAE61")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+```
+
+```{r}
+# alternative data frame
+support_aq_stacked_bar_2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "seaweed farming",
+    question == "q4" ~ "kelp farming",
+    question == "q6" ~ "seaweed aquaculture",
+    question == "q8" ~ "kelp aquaculture")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ "Opposed",
+    answer == "Somewhat opposed" ~ "Opposed",
+    answer == "Neither opposed nor in support" ~ "Neither opposed nor in support",
+    answer == "Somewhat supportive" ~ "Supportive",
+    answer == "Strongly supportive" ~ "Supportive")) %>%
+  drop_na() %>% 
+  mutate(number = case_when( 
+    answer == "Opposed" ~ 1,
+    answer == "Neither opposed nor in support" ~ 2,
+    answer == "Supportive" ~ 3)) %>%
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+support_aq_stacked_bar_2$answer <- factor(support_aq_stacked_bar_2$answer, levels = c("Opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Supportive"))
+# percent stacked barchart
+ggplot(data = support_aq_stacked_bar_2, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#FFFFBF","#FDAE61")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+
+```
+
+## Support/Opposition to Aquaculture
+
+```{r}
+# Combine Q2,4,6,8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+combined_support_answers <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+combined_support_answers$answer <- factor(combined_support_answers$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = combined_support_answers, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
 
 ```
 
@@ -588,7 +764,8 @@ wording_exp_rank_2 <- survey_data_tidy_sbv_long_filtered %>%
     question == "q11_8" ~ "seaweed mariculture")) %>% 
   drop_na() %>% 
   group_by(question) %>% 
-  summarize(mean = round(mean(answer, na.rm = TRUE),2)) %>% # calculate mean rank score for each answer choice
+  summarize(mean = round(mean(answer, na.rm = TRUE),2), # calculate mean rank score for each answer choice
+            sd = round(sd(answer, na.rm = TRUE),2)) %>% 
   mutate(question = fct_reorder(question, mean, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
 
 
@@ -612,7 +789,7 @@ ggplot(data = wording_exp_rank_2, aes(x = mean,
 
 ## Knowledge 
 
-```{r fig.width = 5}
+```{r}
 # (Q10) - How familiar are you with aquaculture?
 
 familiarity <- survey_data_tidy_sbv_long_filtered %>% 
@@ -765,7 +942,7 @@ perception_aq_stats <- survey_data_tidy_sbv_long_filtered %>%
 ## Environmental Impacts
 
 ```{r}
-# Environmental Impacts Questions
+# Environmental benefits/concerns (Q23)
 
 # Q23_1 - Q23_7
 # To what extent do you agree with each of the following statements?
@@ -834,7 +1011,382 @@ ggplot(data = environ_impacts,
 
 ```
 
+
+```{r}
+# environmental benefits/concerns (Q24)
+
+# create new data frame
+environ_impacts_2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q24_1" | 
+           question == "q24_2" |
+           question == "q24_4") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+environ_impacts_2$answer <- factor(environ_impacts_2$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = environ_impacts_2, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
+
 ## Economic Impacts
+
+```{r}
+# economic benefits/concerns (Q25)
+
+# create new data frame
+econ_impacts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q25_1" | 
+           question == "q25_2" |
+           question == "q25_3" |
+           question == "q25_4" |
+           question == "q25_5") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+econ_impacts$answer <- factor(econ_impacts$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = econ_impacts, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "economic impacts: seaweed aquaculture...") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+```
+
+
+```{r}
+# Seaweed Aquaculture risks (Q26)
+
+# create new data frame
+swaq_risks <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q26_1" | 
+           question == "q26_2" |
+           question == "q26_3") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+swaq_risks$answer <- factor(swaq_risks$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = swaq_risks, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
+```{r}
+# Concerns (Q27)
+
+# create new data frame
+swaq_concerns <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q27_1" | 
+           question == "q27_2" |
+           question == "q27_3" |
+           question == "q27_4" |
+           question == "q27_5" |
+           question == "q27_6" |
+           question == "q27_7" |
+           question == "q27_8") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+swaq_concerns$answer <- factor(swaq_concerns$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = swaq_concerns, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
+
+```{r}
+# Seaweed Aquaculture Interest (Q28)
+
+# create new data frame
+swaq_interest <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q28_1" | 
+           question == "q28_2" |
+           question == "q28_3") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+swaq_interest$answer <- factor(swaq_interest$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = swaq_interest, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
+## graphs for faculty review
+
+
+```{r}
+## graph 1
+
+# create new data frame
+graph_1 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q23_1" | 
+           question == "q23_3" |
+           question == "q26_3") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+graph_1$answer <- factor(graph_1$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = graph_1, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+
+
+
+```
+
+```{r}
+# graph 2
+graph_2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q24_4" | 
+           question == "q25_1" |
+           question == "q25_4") %>% 
+  mutate(number = case_when( 
+    answer == "Strongly Disagree" ~ 1,
+    answer == "Disagree" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Agree" ~ 4,
+    answer == "Strongly Agree" ~ 5,
+    answer == "Don't know" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer, number) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (count / sum(count)))
+
+
+# Specify categorical order of answers
+graph_2$answer <- factor(graph_2$answer, levels = c("Don't know",
+                                                              "Strongly Disagree", 
+                                                              "Disagree", 
+                                                              "Neutral",
+                                                              "Agree",
+                                                              "Strongly Agree"))
+
+# percent stacked barchart
+ggplot(data = graph_2, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+```
+
 
 
 ## Demographics 
@@ -872,7 +1424,112 @@ ggplot(data = survey_data_tidy, aes(y = q38)) +
 ```
 
 
+```{r}
+# demographic analysis
 
+# split up support/opposed responses by county
+sbv_residents <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(county, answer) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+sbv_residents$answer <- factor(sbv_residents$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = sbv_residents, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = county)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
+  
+```
+
+```{r}
+# opposed residents
+opposed_residents <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly opposed" |
+           answer == "Somewhat opposed") %>% 
+  group_by(county, q32) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# supportive residents
+supportive_residents <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly supporitve" |
+           answer == "Somewhat supportive") %>% 
+  group_by(county, q32) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+# neutral residents
+neutral_residents <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Neither opposed nor in support") %>% 
+  group_by(county, q32) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+```
 
 
 ## Communication Questions 

@@ -5,7 +5,7 @@ date: "1/30/2022"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning= FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
@@ -30,12 +30,14 @@ conflict_prefer("chisq.test", "janitor")
 conflict_prefer("fisher.test", "janitor")
 ```
 
-```{r}
+```{r load data}
 #load in compiled data files 
 
-survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv")) %>% 
+  filter(response_type != 3)
 
-survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv")) %>% 
+ filter(response_type != 3)
 ```
 
 ## Knowledge 
@@ -50,9 +52,10 @@ We test the relationship between people's familiarity with aquaculture and their
 
 *Statistical Test:* Chi-square test of Q10 & Q13
 
-*Test Statistic:* P-value > 0.5 
+*Test Statistic:* P-value > 0.05 
 
-#### Q10 (familiarity) v. Q13 (perception of swaq)
+
+#### Q10 (familiarity) v. Q13 (perception of seaweed aq)
 ```{r 10v.13 dataframe, table and plot}
 #create subset from tidy filtered data
 #keep only question 10 and 13
@@ -68,7 +71,11 @@ k_p <- survey_data_tidy_sbv_long_filtered %>%
 ggplot(k_p, aes(fill= q13, x = q10))+
   geom_bar(position = "dodge")+
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
-  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999"))
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Familiarity with Aquaculture")+
+  theme(legend.title = element_text("Perception of Seaweed Aquaculture")) +
+  theme_minimal()
   
 #put counts into table format
 k_p_table<- k_p %>% 
@@ -136,7 +143,7 @@ knowledge_perception_grouped_x2
 
 When perception is combined into 'negative', 'neutral', 'positive', and 'unsure', the null hypothesis is rejected (p-value= 2.22 x10-7, alpha =0.05) which indicates the variables are dependent. 
 
-We can also  the Fischer's exact test to calculat the exact p-value. **Fisher's test requires a high muber of simulations because the value of p is so small. Kept crashing R**
+We can also use the Fisher's exact test to calculate the exact p-value. **Fisher's test requires a high number of simulations because the value of p is so small. Kept crashing R**
 
 ```{r 10 v. 13 Fischer's exact test}
 #fisher.test(k_p_ct, workspace = 2e7)
@@ -203,6 +210,7 @@ The null hypothesis was rejected using the Fisher exact test (p-value = 3..7x10-
 #create subset from tidy filtered data
 #keep only question 16 and 13
 k_p_seen <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% 
   select(response_id, question, answer) %>% 
   filter(question == "q17"|
            question == "q13") %>% 
@@ -243,51 +251,16 @@ fisher_Q17 <- tidy(fisher_Q17)
 The Fisher exact test rejected the null hypothesis- that the two variables are independent (p-vale= 0.031, alpha =0.05). 
 
 
+#### Age v. Perception
 
+In this seciton we will compare age with perception
 
+```{r}
+age_perception <- survey_data_tidy_sbv_filtered %>% 
+  select(q41,q40, q39, q38, q37, q36, q35, q34, q33, q32, q31) 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+dems$q31 <- as.integer(dems$q31)
+```
 
 ## Regression Models : Relationship between Knowledge and Support 
 ####Relationship Between knowledge and support
@@ -363,7 +336,7 @@ summary(m2)
 
 
 ```{r understand odds ratio}
-#interpret odds ratio. Outside parenthesis are important 
+#interpret odds ratio to probabilities. Outside parenthesis are important 
 (ci <- confint(m2))
 exp(cbind(coef(m2), t(ci)))
 ```
@@ -373,28 +346,6 @@ exp(cbind(coef(m2), t(ci)))
 newdf_2 <- data.frame(q13 =c(1, 2, 3, 4, 5))
 (phat <- predict(object = m2, newdf_2, type = "p"))
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -421,6 +372,7 @@ independent variable = knowledge (Q10)
 # create data frame with Q2 and Q10
 
 ordinal_log_reg_2_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% #filter out self-collected data
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -492,160 +444,140 @@ newdf <- data.frame(q10 =c(1, 2, 3, 4))
 
 Comparison of our survey demographics with demographics from Santa Barbara and Ventura Counties. 
 
-```{r}
+```{r population demographics}
 #values from ACS 2019 combined for SB and V counties
 sex_ratio_female_to_male <- 1.01
-total_pop <- 1292505
-total_female <- 650714
-total_male <- 641791
+total_pop <- 1292505 #total population of Ventura and Santa Barbara Counties
+total_female <- 650714 #total female population of the two counties
+total_male <- 641791  #total male population of the two counties
 
-#load American Community Survey 2019 Data
+#load American Community Survey 2019 Data 
 ACS_age <- read.csv(here("data", "census", "age_range.csv"))
 ACS_sex <- read.csv(here("data", "census", "total_population.csv"))
 ACS_age <- ACS_age %>% 
   mutate(proportion = Total/total_pop)
 
+#Age distributions by sex for men
 male_dist <- read.csv(here("data", "census", "male_age proportions.csv")) 
-colnames(male_dist) <- c("Group", "Santa Barbara", "Ventura", "Total")
+
+#rename colomns
+colnames(male_dist) <- c("age_group", "Santa Barbara", "Ventura", "Total")
+
+#add a proprotion column
 male_dist <- male_dist%>% 
-  mutate(proprotion = Total/total_male) %>% 
-      mutate(Group = case_when(Group == "Under 5 years" ~"0-5",
-                           Group == "5 to 9 years" ~ "5-9",
-                           Group == "10 to 14 years" ~"10-14",
-                           Group == "15 to 19 years" ~"15-19",
-                           Group == "20 to 24 years" ~"20-24",
-                           Group == "25 to 29 years" ~"25-29",
-                           Group == "30 to 34 years" ~"30-34",
-                           Group == "35 to 39 years" ~"34-39",
-                           Group == "40 to 44 years" ~"40-44",
-                           Group == "45 to 49 years" ~"45-49",
-                           Group == "50 to 54 years" ~"50-54",
-                           Group == "55 to 59 years" ~"55-59",
-                           Group == "60 to 64 years" ~"60-64",
-                           Group == "65 to 69 years" ~ "65-69",
-                           Group == "70 to 74 years" ~ "70-74",
-                           Group == "75 to 79 yeras" ~ "75-79",
-                           Group == "80 to 84 years" ~ "80-84",
-                           Group == "85 and over" ~ "84+"))%>% 
-  filter(!(Group %in% c("0-5","5-9","10-14","15-19")))
+  mutate(proprotion = Total/total_male) %>% #find proportion 
+  #change column names to match grouping
+      mutate(age_group = case_when(age_group == "Under 5 years" ~"0-5", 
+                           age_group == "5 to 9 years" ~ "5-9",
+                           age_group == "10 to 14 years" ~ "10-14",
+                           age_group == "15 to 19 years" ~ "15-19",
+                           age_group == "20 to 24 years" ~ "20-24",
+                           age_group == "25 to 29 years" ~ "25-29",
+                           age_group == "30 to 34 years" ~ "30-34",
+                           age_group == "35 to 39 years" ~ "34-39",
+                           age_group == "40 to 44 years" ~ "40-44",
+                           age_group == "45 to 49 years" ~ "45-49",
+                           age_group == "50 to 54 years" ~ "50-54",
+                           age_group == "55 to 59 years" ~ "55-59",
+                           age_group == "60 to 64 years" ~ "60-64",
+                           age_group == "65 to 69 years" ~ "65-69",
+                           age_group == "70 to 74 years" ~ "70-74",
+                           age_group == "75 to 79 years" ~ "75-79",
+                           age_group == "80 to 84 years" ~ "80-84",
+                           age_group == "85 and over " ~ "85-100"))%>% 
+  #filter out people under 18
+  filter(!(age_group %in% c("0-5","5-9","10-14","15-19")))
 
-
+#Age distribution for womn
 female_dist <- read.csv(here("data", "census", "female_age_total.csv")) 
-colnames(female_dist) <- c("Group", "Santa Barbara", "Ventura", "Total")
+colnames(female_dist) <- c("age_group", "Santa Barbara", "Ventura", "Total")
   
-female <-female_dist %>% 
+female_dist <-female_dist %>% 
     mutate(proprotion = Total/total_female) %>% 
-    mutate(Group = case_when(Group == "Under 5 years" ~"0-5",
-                           Group == "5 to 9 years" ~ "5-9",
-                           Group == "10 to 14 years" ~"10-14",
-                           Group == "15 to 19 years" ~"15-19",
-                           Group == "20 to 24 years" ~"20-24",
-                           Group == "25 to 29 years" ~"25-29",
-                           Group == "30 to 34 years" ~"30-34",
-                           Group == "35 to 39 years" ~"34-39",
-                           Group == "40 to 44 years" ~"40-44",
-                           Group == "45 to 49 years" ~"45-49",
-                           Group == "50 to 54 years" ~ "50-54",
-                           Group == "55 to 59 years" ~ "55-59",
-                           Group == "60 to 64 years" ~ "60-64",
-                           Group == "65 to 69 years" ~ "65-69",
-                           Group == "70 to 74 years" ~ "70-74",
-                           Group == "75 to 79 years" ~ "75-79",
-                           Group == "80 to 84 years" ~ "80-84",
-                           Group == "85 and over" ~ "85+")) %>% 
-  filter(!(Group %in% c("0-5","5-9","10-14","15-19")))
-
-ggplot(data = male_dist, 
-       aes(x= age_group, y = proportion)) +
-  geom_bar(stat = "identity")
+    mutate(age_group = case_when(age_group == "Under 5 years" ~"0-5",
+                           age_group == "5 to 9 years" ~ "5-9",
+                           age_group == "10 to 14 years" ~"10-14",
+                           age_group == "15 to 19 years" ~"15-19",
+                           age_group == "20 to 24 years" ~"20-24",
+                           age_group == "25 to 29 years" ~"25-29",
+                           age_group == "30 to 34 years" ~"30-34",
+                           age_group == "35 to 39 years" ~"34-39",
+                           age_group == "40 to 44 years" ~"40-44",
+                           age_group == "45 to 49 years" ~"45-49",
+                           age_group == "50 to 54 years" ~ "50-54",
+                           age_group == "55 to 59 years" ~ "55-59",
+                           age_group == "60 to 64 years" ~ "60-64",
+                           age_group == "65 to 69 years" ~ "65-69",
+                           age_group == "70 to 74 years" ~ "70-74",
+                           age_group == "75 to 79 years" ~ "75-79",
+                           age_group == "80 to 84 years" ~ "80-84",
+                           age_group == "85 and over " ~ "85-100")) %>% 
+  filter(!(age_group %in% c("0-5","5-9","10-14","15-19")))
+```
 
 
-
-dems <- survey_data_tidy_sbv_filtered %>% 
-  select(q41,q40, q39, q38, q37, q36, q35, q34, q33, q32, q31) 
-
-dems$q31 <- as.integer(dems$q31)
+```{r load and prep sample demographics}
+#Load sample data
+survey_data_tidy_sbv_filtered$q31 <- as.integer(survey_data_tidy_sbv_filtered$q31)
 
 #create bins for age
 labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
                 sep = "-"), paste(100, "+", sep = ""))
 
-#age and sex 
-
-#women age plot
-female <- dems %>% 
-  select(q31, q32) %>% 
-  filter(q32 == "Woman") %>% 
-  mutate(q31= 2022- q31) 
+age <- survey_data_tidy_sbv_filtered%>% 
+  mutate(age= 2022- q31) 
 
 
-female$age_group <- cut(female$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
 
-female$age_group <- as.character(female$age_group)
 
-female <- female %>%
-  mutate(age_group = case_when(age_group == "25-29" ~"25-34", 
-                                age_group == "30-34" ~"25-34",
-                                age_group == "35-39" ~ "35-44",
-                                age_group == "40-44" ~ "40-44",
-                                age_group == "45-49" ~ "45-54",
-                                age_group == "50-54" ~ "45-54",
-                                age_group == "65-69" ~ "65-74", 
-                                age_group == "70-74" ~ "65-74",
-                                TRUE ~ age_group))
-female$age_group <- as.factor(female$age_group)
-  
-female <-  female %>% 
-  group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-  
-# percent stacked barchart
-ggplot(data = female, 
-       aes(x= age_group, y = proportion)) +
-  geom_bar(stat = "identity")
-
-#male age plot
-male <- dems %>% 
-  select(q31, q32) %>% 
-  filter(q32 == "Man") %>% 
-  mutate(q31= 2022- q31) %>% 
-  filter(q31 != 5) 
-
-male$age_group <- cut(male$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
-male$age_group <- as.character(male$age_group)
-
-male <- male %>%
-  mutate(age_group = case_when(age_group == "25-29" ~"25-34", 
-                                age_group == "30-34" ~"25-34",
-                                age_group == "35-39" ~ "35-44",
-                                age_group == "40-44" ~ "40-44",
-                                age_group == "45-49" ~ "45-54",
-                                age_group == "50-54" ~ "45-54",
-                                age_group == "65-69" ~ "65-74", 
-                                age_group == "70-74" ~ "65-74",
-                                TRUE ~ age_group))
-male$age_group <- as.factor(male$age_group)
-  
-male <-  male %>% 
-  group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-  
-ggplot(data = male, 
-       aes(x= age_group, y = proportion)) +
-  geom_bar(stat = "identity")
 ```
+
+
+```{r womens age demographics}
+#sample data: Women
+female <- age %>% 
+  filter(q32 == "Woman") %>% 
+  group_by(age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+```
+
+
+```{r men age demographics}
+#sample data: male age
+male <- age %>% 
+  filter(q32 == "Man") %>% 
+  group_by(age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+```
+
 
 ```{r}
-#race
+#create subset from tidy filtered data
+#keep only question 10 and 13
+age_perception <- age%>% 
+  select(response_id, q13, q10, age, age_group) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
 
-race <- dems %>% 
+ggplot(age_perception, aes(fill= q13, x = age_group))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Perception of Aquaculture")+
+  theme(legend.title = element_text("Perception of Seaweed Aquaculture"),
+       axis.text.x = element_text(angle = 90))+
+  theme_minimal()
   
+#put counts into table format
+k_p_table<- k_p %>% 
+  tabyl(q10, q13) 
 ```
-
-
-
 
 
 
