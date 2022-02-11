@@ -5,7 +5,7 @@ date: "1/30/2022"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning= FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
@@ -30,12 +30,14 @@ conflict_prefer("chisq.test", "janitor")
 conflict_prefer("fisher.test", "janitor")
 ```
 
-```{r}
+```{r load data}
 #load in compiled data files 
 
-survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_filtered.csv")) %>% 
+  filter(response_type != 3)
 
-survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv")) %>% 
+ filter(response_type != 3)
 ```
 
 ## Knowledge 
@@ -50,7 +52,8 @@ We test the relationship between people's familiarity with aquaculture and their
 
 *Statistical Test:* Chi-square test of Q10 & Q13
 
-*Test Statistic:* P-value > 0.5 
+*Test Statistic:* P-value > 0.05 
+
 
 #### Q10 (familiarity) v. Q13 (perception of seaweed aq)
 ```{r 10v.13 dataframe, table and plot}
@@ -207,6 +210,7 @@ The null hypothesis was rejected using the Fisher exact test (p-value = 3..7x10-
 #create subset from tidy filtered data
 #keep only question 16 and 13
 k_p_seen <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% 
   select(response_id, question, answer) %>% 
   filter(question == "q17"|
            question == "q13") %>% 
@@ -247,51 +251,16 @@ fisher_Q17 <- tidy(fisher_Q17)
 The Fisher exact test rejected the null hypothesis- that the two variables are independent (p-vale= 0.031, alpha =0.05). 
 
 
+#### Age v. Perception
 
+In this seciton we will compare age with perception
 
+```{r}
+age_perception <- survey_data_tidy_sbv_filtered %>% 
+  select(q41,q40, q39, q38, q37, q36, q35, q34, q33, q32, q31) 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+dems$q31 <- as.integer(dems$q31)
+```
 
 ## Regression Models : Relationship between Knowledge and Support 
 ####Relationship Between knowledge and support
@@ -367,7 +336,7 @@ summary(m2)
 
 
 ```{r understand odds ratio}
-#interpret odds ratio. Outside parenthesis are important 
+#interpret odds ratio to probabilities. Outside parenthesis are important 
 (ci <- confint(m2))
 exp(cbind(coef(m2), t(ci)))
 ```
@@ -403,6 +372,7 @@ independent variable = knowledge (Q10)
 # create data frame with Q2 and Q10
 
 ordinal_log_reg_2_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% #filter out self-collected data
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -548,61 +518,69 @@ female_dist <-female_dist %>%
 
 ```{r load and prep sample demographics}
 #Load sample data
-dems <- survey_data_tidy_sbv_filtered %>% 
-  select(q41,q40, q39, q38, q37, q36, q35, q34, q33, q32, q31) 
-
-dems$q31 <- as.integer(dems$q31)
+survey_data_tidy_sbv_filtered$q31 <- as.integer(survey_data_tidy_sbv_filtered$q31)
 
 #create bins for age
 labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
                 sep = "-"), paste(100, "+", sep = ""))
 
-```
+age <- survey_data_tidy_sbv_filtered%>% 
+  mutate(age= 2022- q31) 
 
+
+age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+
+```
 
 
 ```{r womens age demographics}
 #sample data: Women
-female <- dems %>% 
-  select(q31, q32) %>% 
+female <- age %>% 
   filter(q32 == "Woman") %>% 
-  mutate(q31= 2022- q31) 
-
-
-female$age_group <- cut(female$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
-
-  
-female <-  female %>% 
   group_by(age_group) %>% 
   summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-  
-# percent stacked barchart women
-ggplot() +
-  geom_bar(data=female, aes(x= age_group, y= proportion) )
+  mutate(proportion = (count / sum(count))) 
 
 ```
 
 
 ```{r men age demographics}
 #sample data: male age
-male <- dems %>% 
-  select(q31, q32) %>% 
+male <- age %>% 
   filter(q32 == "Man") %>% 
-  mutate(q31= 2022- q31) %>% 
-  filter(q31 != 5) 
-
-male$age_group <- cut(male$q31, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
-
-male <-  male %>% 
   group_by(age_group) %>% 
   summarize(count = n()) %>% 
   mutate(proportion = (count / sum(count)))
   
-ggplot(
-       aes(x= age_group, y = proportion)) +
-  geom_bar(stat = "identity")
 ```
+
+
+```{r}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+age_perception <- age%>% 
+  select(response_id, q13, q10, age, age_group) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+
+ggplot(age_perception, aes(fill= q13, x = age_group))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Perception of Aquaculture")+
+  theme(legend.title = element_text("Perception of Seaweed Aquaculture"),
+       axis.text.x = element_text(angle = 90))+
+  theme_minimal()
+  
+#put counts into table format
+k_p_table<- k_p %>% 
+  tabyl(q10, q13) 
+```
+
+
+
 
 
 
