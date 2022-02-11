@@ -539,8 +539,9 @@ age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = lab
 female <- age %>% 
   filter(q32 == "Woman") %>% 
   group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count))) 
+  summarize(count = n())  
+
+sum(female$count)
 
 ```
 
@@ -550,9 +551,12 @@ female <- age %>%
 male <- age %>% 
   filter(q32 == "Man") %>% 
   group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-  
+  summarize(count = n()) 
+
+sum(male$count)
+
+
+
 ```
 
 
