@@ -1,7 +1,7 @@
-﻿County,Variable,Value,,,,,
-SB,Total Population,446499,,,,,
-SB,Total Male,223859,,1.01390328,,Total Female,650714
-SB,Total Female,222640,,1292505,,Total Male,641791
-V,Total Population,846006,,,,,
-V,Total Male,417932,,,,Total Population,1292505
-V,Total Female,428074,,,,,
+﻿County,Variable,Value,,,,,,
+SB,Total Population,446499,,,,,,Proportion
+SB,Total Male,223859,,1.01390328,,Total Female,650714,0.503451824
+SB,Total Female,222640,,1292505,,Total Male,641791,0.496548176
+V,Total Population,846006,,,,,,
+V,Total Male,417932,,,,Total Population,1292505,
+V,Total Female,428074,,,,,,
