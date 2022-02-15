@@ -117,7 +117,7 @@ survey_data_tidy_sbv <- as.data.table(survey_data_tidy_sbv)
 
 # use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
 survey_data_tidy_sbv_long <- survey_data_tidy_sbv %>% 
-  melt(id.vars = c("response_id", "response_type", "finished", "county", 
+  melt(id.vars = c("response_id", "response_type", "finished", "duration_in_seconds", "county", 
                    "q31", "q32", "q33", "q34", "q35", "q36", "q37", "q38", "q39", "q39_7_text", "q40", "q40_8_text"), 
        variable.name = "question", 
        value.name = "answer")
@@ -185,10 +185,10 @@ survey_data_tidy_long_filtered <- survey_data_tidy_long %>%
 # remove speeders from SBV datasets
 ## THESE DATASETS SHOULD BE SAVED AS CSVs (see next code chunk)
 survey_data_tidy_sbv_filtered <- survey_data_tidy_sbv %>% 
-  filter(response_type != 0) 
+  filter(duration_in_seconds >= 180) 
 
 survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_long %>% 
-  filter(response_type != 0)
+  filter(duration_in_seconds >= 180) 
 ```
 
 ## Save Finalized Data Frames as csv 
@@ -1425,10 +1425,11 @@ ggplot(data = survey_data_tidy, aes(y = q38)) +
 
 
 ```{r}
-# demographic analysis
+# demographic analysis for Qualtrics survey
 
 # split up support/opposed responses by county
 sbv_residents <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -1440,7 +1441,7 @@ sbv_residents <- survey_data_tidy_sbv_long_filtered %>%
     question == "q8" ~ "q2")) %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
-  group_by(county, answer) %>% 
+  group_by(q38, answer) %>% 
   summarize(count = n()) %>% 
   mutate(proportion = (count / sum(count)))
 
@@ -1455,7 +1456,7 @@ sbv_residents$answer <- factor(sbv_residents$answer, levels = c("Strongly oppose
 ggplot(data = sbv_residents, 
        aes(fill = forcats::fct_rev(answer),
            y = proportion,
-           x = county)) +
+           x = q38)) +
   geom_bar(position = "stack",
            stat = "identity",
            width = 0.5) +
@@ -1472,6 +1473,56 @@ ggplot(data = sbv_residents,
         legend.position = "right") 
   
 ```
+
+```{r}
+# demographic analysis for self-collected
+
+# split up support/opposed responses by county
+sbv_residents_qrcode <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type == 3) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(county, answer) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+sbv_residents_qrcode$answer <- factor(sbv_residents_qrcode$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = sbv_residents_qrcode, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q38)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
+```
+
 
 ```{r}
 # opposed residents

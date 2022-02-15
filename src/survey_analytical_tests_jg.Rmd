@@ -24,10 +24,12 @@ library(broom)
 library(MASS)         #for ordered logist or probit regression
 library(conflicted)  # allows for choosing preference over conflicting functions from different packages
 library(RColorBrewer)
+library(reshape)
 conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
 conflict_prefer("filter", "dplyr")
 conflict_prefer("chisq.test", "janitor")
 conflict_prefer("fisher.test", "janitor")
+conflict_prefer("melt", "reshape")
 ```
 
 ```{r load data}
@@ -539,8 +541,9 @@ age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = lab
 female <- age %>% 
   filter(q32 == "Woman") %>% 
   group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count))) 
+  summarize(count = n())  
+
+sum(female$count)
 
 ```
 
@@ -550,9 +553,10 @@ female <- age %>%
 male <- age %>% 
   filter(q32 == "Man") %>% 
   group_by(age_group) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-  
+  summarize(count = n()) 
+
+sum(male$count)
+
 ```
 
 
@@ -560,26 +564,97 @@ male <- age %>%
 #create subset from tidy filtered data
 #keep only question 10 and 13
 age_perception <- age%>% 
-  select(response_id, q13, q10, age, age_group) %>% 
-  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
-  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+  select(response_id,  q13, age, age_group) %>% 
+   filter(age > 18) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) 
 
 ggplot(age_perception, aes(fill= q13, x = age_group))+
   geom_bar(position = "dodge")+
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
   scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
   labs(y = "count",
-       x = "Perception of Aquaculture")+
-  theme(legend.title = element_text("Perception of Seaweed Aquaculture"),
-       axis.text.x = element_text(angle = 90))+
-  theme_minimal()
+       x = "Perception of Aquaculture",
+       title = "Impact of Age on Aquaculture Perceptions (Q13)",
+       fill = str_wrap("Perceptions of Aquaculture", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8))
   
 #put counts into table format
-k_p_table<- k_p %>% 
-  tabyl(q10, q13) 
+age_perception<- age_perception %>%
+  select(age_group, q13) %>% 
+  group_by(age_group, q13) %>% 
+  melt(age_perception, id.var = c("age_group")) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
 ```
 
 
+```{r ethnicity}
+race <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, q33, question, answer) %>% 
+#combine support metrics
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" ) %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") %>% 
+  mutate(answer = fct_relevel(answer, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
+
+
+#split race into three columns
+ separate(q33, c("race_1", "race_2", "race_3"), ",")
+
+#remove blank rows from the answer column
+race <- race[!race$answer =="",]
+
+
+ggplot(race, 
+       aes(fill= answer, 
+           x= answer))+
+  geom_bar(position= "dodge")+
+  facet_wrap(~race_1)+
+  scale_x_discrete(
+    labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Support for Expanding Aquaculture",
+       title = "Race and Support for Expanding Seaweed Aquaculture (Q2)",
+       fill = str_wrap("Support/Opposition", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8))
+
+#make proportions table by race_1 and answer
+race_table <- race %>% 
+  group_by(race_1, answer) %>% 
+    summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+
+#plot proportions table
+ggplot(data = race_table, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = answer)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~race_1)+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Support for Expanding Aquaculture",
+       title = "Race and Support for Expanding Seaweed Aquaculture (Q2)",
+       fill = str_wrap("Support/Opposition", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8))
+```
 
 
 

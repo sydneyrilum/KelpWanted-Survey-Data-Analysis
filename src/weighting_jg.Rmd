@@ -1,0 +1,21 @@
+---
+title: "weighting_jg"
+author: "JGaun"
+date: "2/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(here)
+library(survey)
+```
+
+```{r}
+#load data 
+
+unweighted <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+```
+
