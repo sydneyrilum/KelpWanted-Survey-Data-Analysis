@@ -401,6 +401,8 @@ ggplot(perception_counts, aes(answer, value)) +
         # select(a, mycol)
 ```
 
+
+
 # 5. Knowledge: 
 
 *Questions:* Are residents familiar with kelp aquaculture? 
