@@ -244,6 +244,7 @@ ggplot(data = sbv_residents_income,
   
 ```
 
+
 ```{r}
 #q34
 # opposed residents
