@@ -142,3 +142,223 @@ ggplot(data = environ_impacts_risk,
         )+
   guides(color = guide_legend(reverse=TRUE),fill=guide_legend(nrow=1,byrow=TRUE))
 ```
+
+```{r}
+# demographic analysis for Qualtrics survey
+
+# split up support/opposed responses by answer
+sbv_residents_edu <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(q34, answer) %>% #select education level question
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+sbv_residents_edu$answer <- factor(sbv_residents_edu$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = sbv_residents_edu, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q34)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+```
+```{r}
+# demographic analysis for Qualtrics survey
+
+# split up support/opposed responses by answer
+sbv_residents_income <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(q35, answer) %>% #select education level question
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# Specify categorical order of questions and answers
+sbv_residents_income$answer <- factor(sbv_residents_income$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = sbv_residents_income, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q35)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+```
+
+
+```{r}
+#q34
+# opposed residents
+opposed_residents_edu <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly opposed" |
+           answer == "Somewhat opposed") %>% 
+  group_by(answer, q34) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# supportive residents
+supportive_residents_edu <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly supporitve" |
+           answer == "Somewhat supportive") %>% 
+  group_by(answer, q34) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+# neutral residents
+neutral_residents_edu <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Neither opposed nor in support") %>% 
+  group_by(answer, q34) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+```
+
+```{r}
+#q35
+# opposed residents
+opposed_residents_income <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly opposed" |
+           answer == "Somewhat opposed") %>% 
+  group_by(answer, q35) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+
+# supportive residents
+supportive_residents_income <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Strongly supporitve" |
+           answer == "Somewhat supportive") %>% 
+  group_by(answer, q35) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+  
+# neutral residents
+neutral_residents_income <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  filter(answer == "Neither opposed nor in support") %>% 
+  group_by(answer, q35) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count)))
+```

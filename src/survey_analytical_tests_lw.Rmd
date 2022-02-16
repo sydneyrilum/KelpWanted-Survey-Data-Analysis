@@ -4,7 +4,7 @@ author: "Laurel Wee"
 date: "1/26/2022"
 output: html_document
 ---
-
+ 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -59,7 +59,7 @@ sb_zipcodes<-
 sb_ventura_co_zip <- 
   rbind(ventura_zipcodes, sb_zipcodes)
 ```
-
+ 
 ```{r}
 # select survey responses from Ventura County residents ONLY
 survey_data_v <- merge(survey_data_clean, ventura_zipcodes, 
@@ -400,6 +400,8 @@ ggplot(perception_counts, aes(answer, value)) +
   #mutate(support_combined = coalesce(,y,z)) %>%
         # select(a, mycol)
 ```
+
+
 
 # 5. Knowledge: 
 
