@@ -613,7 +613,7 @@ race <- survey_data_tidy_sbv_long_filtered %>%
 #remove blank rows from the answer column
 race <- race[!race$answer =="",]
 
-
+#ploit race and 
 ggplot(race, 
        aes(fill= answer, 
            x= answer))+
@@ -657,11 +657,127 @@ ggplot(data = race_table,
 ```
 
 
+```{r relationship to aquaculture (q40)}
+aq_rel <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, q40, question, answer) %>% 
+#combine support metrics
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" ) %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") %>% 
+  mutate(answer = fct_relevel(answer, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
+
+
+#split race into three columns
+ separate(q33, c("race_1", "race_2", "race_3"), ",")
+
+#remove blank rows from the answer column
+race <- race[!race$answer =="",]
+
+```
+
+
+```{r days by the ocean}
+
+```
 
 
 
+```{r occupation q39}
+sector<- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, q39, q39_7_text, question, answer) %>% 
+#combine support metrics
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" ) %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") %>% 
+  mutate(answer = fct_relevel(answer, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
+  #categorize common text sector entry
+mutate(q39_7_text = case_when(grepl("retired", q39_7_text, ignore.case = TRUE)~ "retired",
+                              grepl("disable", q39_7_text, ignore.case = TRUE)~ "disabled",
+                              grepl("sales", q39_7_text, ignore.case = TRUE) ~"service industry",
+                              grepl("unemploy", q39_7_text, ignore.case = TRUE)~ "unemployed",
+                             grepl("not employed", q39_7_text, ignore.case = TRUE)~ "unemployed",
+                             grepl("not working", q39_7_text, ignore.case = TRUE)~ "unemployed",
+                             grepl("Office Assistant", q39_7_text, ignore.case = TRUE)~ "service industry",
+                             grepl("retail", q39_7_text, ignore.case = TRUE)~ "service industry",
+                              grepl("real estate", q39_7_text, ignore.case = TRUE)~ "service industry",
+                              grepl("journalism", q39_7_text, ignore.case = TRUE)~ "media",
+                             grepl("social media", q39_7_text, ignore.case = TRUE)~ "media",
+                             grepl("motion pics", q39_7_text, ignore.case = TRUE)~ "media",
+                             grepl("writing", q39_7_text, ignore.case = TRUE)~ "media",
+                             grepl("utilities", q39_7_text, ignore.case = TRUE)~ "government",
+                             grepl("veterin", q39_7_text, ignore.case = TRUE)~ "service industry",
+                             grepl("human resources", q39_7_text, ignore.case = TRUE)~ "service industry",
+                             grepl("it services", q39_7_text, ignore.case = TRUE)~ "service industry",
+       TRUE ~ "other")) %>% 
+mutate(q39 = case_when(q39 == "other"~ q39_7_text,
+                       TRUE~q39 )) %>% 
+         
+#split race into three columns
+ separate(q39, c("sector_1", "sector_2", "sector_3"), ",")
+
+#remove blank rows from the answer column
+sector<- sector[!sector$answer =="",]
 
 
+ggplot(sector, 
+       aes(fill= answer, 
+           x= answer))+
+  geom_bar(position= "dodge")+
+  facet_wrap(~sector_1)+
+  scale_x_discrete(
+    labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Support for Expanding Aquaculture",
+       title = "Employment Sector and Support for Expanding Seaweed Aquaculture (Q2)",
+       fill = str_wrap("Support/Opposition", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8),
+        legend.position = "bottom")
+
+
+#make proportions table by sector_1 and answer
+sector_table <- sector%>% 
+  group_by(sector_1, answer) %>% 
+    summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+
+#plot proportions table
+ggplot(data = sector_table, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = answer)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~sector_1)+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Support for Expanding Aquaculture",
+       title = "Employment Sector and Support for Expanding Seaweed Aquaculture (Q2)",
+       fill = str_wrap("Support/Opposition", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8))
+```
 
 
 
