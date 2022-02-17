@@ -441,10 +441,11 @@ newdf <- data.frame(q10 =c(1, 2, 3, 4))
 ```
 
 
-
 ### Demographics 
 
 Comparison of our survey demographics with demographics from Santa Barbara and Ventura Counties. 
+
+##### Age
 
 ```{r population demographics}
 #values from ACS 2019 combined for SB and V counties
@@ -517,7 +518,6 @@ female_dist <-female_dist %>%
   filter(!(age_group %in% c("0-5","5-9","10-14","15-19")))
 ```
 
-
 ```{r load and prep sample demographics}
 #Load sample data
 survey_data_tidy_sbv_filtered$q31 <- as.integer(survey_data_tidy_sbv_filtered$q31)
@@ -534,7 +534,6 @@ age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = lab
 
 
 ```
-
 
 ```{r womens age demographics}
 #sample data: Women
@@ -558,7 +557,6 @@ male <- age %>%
 sum(male$count)
 
 ```
-
 
 ```{r}
 #create subset from tidy filtered data
@@ -589,7 +587,8 @@ age_perception<- age_perception %>%
 ```
 
 
-```{r ethnicity}
+##### Support v. other things
+```{r race & ethnicity}
 race <- survey_data_tidy_sbv_long_filtered %>% 
   select(response_id, q33, question, answer) %>% 
 #combine support metrics
@@ -655,7 +654,6 @@ ggplot(data = race_table,
   theme(axis.text.x = element_text(angle= 45),
         legend.text = element_text(size = 8))
 ```
-
 
 ```{r relationship to aquaculture (q40)}
 aq_rel <- survey_data_tidy_sbv_long_filtered %>% 
@@ -745,12 +743,14 @@ mutate(q39_7_text = case_when(grepl("retired", q39_7_text, ignore.case = TRUE)~ 
        TRUE ~ "other")) %>% 
 mutate(q39 = case_when(q39 == "other"~ q39_7_text,
                        TRUE~q39 )) %>% 
+  #remove blank occupations
+  filter(q39 != "") %>% 
          
 #split race into three columns
  separate(q39, c("sector_1", "sector_2", "sector_3"), ",")
 
 #remove blank rows from the answer column
-sector<- sector[!sector$answer =="",]
+sector<- sector[!sector$answer == "",]
 
 
 ggplot(sector, 
@@ -776,6 +776,9 @@ sector_table <- sector%>%
     summarize(count = n()) %>% 
   mutate(proportion = (count / sum(count))) 
 
+sector_tabyl <- sector %>% 
+  tabyl(sector_1, answer) %>% 
+  
 
 #plot proportions table
 ggplot(data = sector_table, 
@@ -794,17 +797,23 @@ ggplot(data = sector_table,
        fill = str_wrap("Support/Opposition", width = 15))+
   theme(axis.text.x = element_text(angle= 45),
         legend.text = element_text(size = 8))
+
+#chi-square test 
+sector_tabyl <- sector %>% 
+  tabyl(answer, sector_1) 
+
+
 ```
 
-```{r days by the ocean}
+```{r days by the ocean q15}
 ocean_time <- survey_data_tidy_sbv_filtered%>% 
 select(response_id, q15, q2, q4, q6, q8) %>% 
-#change non-responses to '0 days' because we didn't give people that option
- mutate(q15= case_when(q15 == "" ~ "0 days",
-                       TRUE ~ q15)) %>% 
+#change non-responses to '0 days' because but one non-response corresponds to 'no' response to q14 'do you spend free time by the ocean?'
+mutate(q15= case_when(q15 == "" ~ "0 days",
+                     TRUE ~ q15)) %>% 
 #combine support metrics from multiple columns into one columns
   unite("support", q2:q8, sep ="") %>% 
-#filter out non-resp1onse for q2-q8
+#filter out non-response for q2-q8
   filter(support != "") %>% 
   mutate(support = fct_relevel(support, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
   mutate(q15 = fct_relevel(q15, c("0 days", "1-5 days", "5-10 days", "10-15 days", "15+ days")))
@@ -834,10 +843,43 @@ ggplot(data = ocean_t_table,
         legend.text = element_text(size = 8))
   
 summary(ocean_time$q15)
+
+
+#chi-square test split into five support categories
+ocean_t_tabyl <- ocean_time %>% 
+  tabyl(q15, support)%>% 
+  column_to_rownames(var = "q15")
+
+ocean_t_chi <- chisq.test(ocean_t_tabyl)
+ocean_t_chi
+
 ```
 There appears to be a relationship between monthly ocean visitation and support for expanding seaweed aquaculture. Further analysis will need to be conducted because the total responses for 10-15 days (n=17) and over 15 days a month (24) than for the smaller categories. 
 
-A big assumption is that the people who didn't respond were "0" days because we didn't give them that option. 
+The results do not appear to be statistically significant. However, the small number of responses 
+
+```{r ocean visitation support combined into 3 categories}
+#3 support categories
+visitation_combo <- ocean_time %>% 
+  mutate(support= case_when(
+    support == "Strongly supportive" ~ "supportive",
+    support == "Somewhat supportive" ~ "supportive",
+    support == "Strongly opposed" ~ "opposed",
+    support == "Somewhat opposed" ~ "opposed",
+    support == "Neither opposed nor in support"~ "Neither opposed nor in support"
+  ))
+
+visitation_tabyl <- visitation_combo %>% 
+  tabyl(q15, support)%>% 
+  column_to_rownames(var = "q15")
+
+visitation_combo_chi <- chisq.test(visitation_tabyl)
+visitation_combo_chi
+visitation_fishers <- fisher.test(visitation_tabyl, workspace = 2e7)
+visitation_fishers
+```
+
+Upon further analysis however, there does not seem to be a statistically significant relationship between the amount of days per month people spend by the ocean and their support for expanding aquaculture when tested with the Fishers and chi-square test. 
 
 
 
