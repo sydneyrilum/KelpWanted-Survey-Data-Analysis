@@ -10,12 +10,45 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
 library(here)
+
+#packages for survey analysis
+library(haven)
+library(anesrake)
+library(weights)
 library(survey)
+library(srvyr)
+library(jtools)
+library(remotes)
 ```
 
 ```{r}
 #load data 
+survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
 
-unweighted <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+#set targets
+taret <- read.csv(here("data","census", "population_margins.csv")) %>% 
+  clean_names() %>% 
+  select(age_group, sex, prop_sbv_res)
 ```
+
+```{r}
+
+```
+
+
+```{r}
+ranking <- anesrake()
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
