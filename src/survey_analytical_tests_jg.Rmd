@@ -698,7 +698,7 @@ ggplot(data = relationship_table,
            width = 0.5) +
   scale_y_continuous(labels = scales::percent) +
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
-  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF", "#FDAE61","#D7191C","#999999"))+
   labs(y = "count",
        x = "Support for Expanding Aquaculture",
        title = "Employment Sector and Support for Expanding Seaweed Aquaculture (Q2)",
@@ -707,13 +707,6 @@ ggplot(data = relationship_table,
         legend.text = element_text(size = 8))
 
 ```
-
-
-```{r days by the ocean}
-
-```
-
-
 
 ```{r sector/occupation q39}
 sector<- survey_data_tidy_sbv_long_filtered %>% 
@@ -740,8 +733,8 @@ mutate(q39_7_text = case_when(grepl("retired", q39_7_text, ignore.case = TRUE)~ 
                              grepl("not working", q39_7_text, ignore.case = TRUE)~ "unemployed",
                              grepl("Office Assistant", q39_7_text, ignore.case = TRUE)~ "service industry",
                              grepl("retail", q39_7_text, ignore.case = TRUE)~ "service industry",
-                              grepl("real estate", q39_7_text, ignore.case = TRUE)~ "service industry",
-                              grepl("journalism", q39_7_text, ignore.case = TRUE)~ "media",
+                            grepl("real estate", q39_7_text, ignore.case = TRUE)~ "service industry",
+                            grepl("journalism", q39_7_text, ignore.case = TRUE)~ "media",
                              grepl("social media", q39_7_text, ignore.case = TRUE)~ "media",
                              grepl("motion pics", q39_7_text, ignore.case = TRUE)~ "media",
                              grepl("writing", q39_7_text, ignore.case = TRUE)~ "media",
@@ -794,7 +787,7 @@ ggplot(data = sector_table,
            width = 0.5) +
   scale_y_continuous(labels = scales::percent) +
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
-  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+ scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF", "#FDAE61","#D7191C","#999999")) +
   labs(y = "count",
        x = "Support for Expanding Aquaculture",
        title = "Employment Sector and Support for Expanding Seaweed Aquaculture (Q2)",
@@ -803,7 +796,48 @@ ggplot(data = sector_table,
         legend.text = element_text(size = 8))
 ```
 
+```{r days by the ocean}
+ocean_time <- survey_data_tidy_sbv_filtered%>% 
+select(response_id, q15, q2, q4, q6, q8) %>% 
+#change non-responses to '0 days' because we didn't give people that option
+ mutate(q15= case_when(q15 == "" ~ "0 days",
+                       TRUE ~ q15)) %>% 
+#combine support metrics from multiple columns into one columns
+  unite("support", q2:q8, sep ="") %>% 
+#filter out non-resp1onse for q2-q8
+  filter(support != "") %>% 
+  mutate(support = fct_relevel(support, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
+  mutate(q15 = fct_relevel(q15, c("0 days", "1-5 days", "5-10 days", "10-15 days", "15+ days")))
 
+#table
+ocean_t_table <- ocean_time%>% 
+  group_by(q15, support) %>% 
+    summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+
+ggplot(data = ocean_t_table, 
+       aes(fill = forcats::fct_rev(support),
+           y = proportion,
+           x = q15)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF", "#FDAE61","#D7191C","#999999")) +
+  labs(y = "count",
+       x = "Support for Expanding Aquaculture",
+       title = "Monthly Ocean Visitation and Support for Expanding Seaweed Aquaculture (Q2)",
+       fill = str_wrap("Support/Opposition", width = 15))+
+  theme(axis.text.x = element_text(angle= 45),
+        legend.text = element_text(size = 8))
+  
+summary(ocean_time$q15)
+```
+There appears to be a relationship between monthly ocean visitation and support for expanding seaweed aquaculture. Further analysis will need to be conducted because the total responses for 10-15 days (n=17) and over 15 days a month (24) than for the smaller categories. 
+
+A big assumption is that the people who didn't respond were "0" days because we didn't give them that option. 
 
 
 
