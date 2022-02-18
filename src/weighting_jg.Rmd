@@ -28,7 +28,7 @@ survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
 #set targets
 target <- read.csv(here("data","census", "population_margins.csv")) %>% 
   clean_names() %>% 
-  select(age_group, sex, prop_sbv_res)
+  select(sex, age_group, proportion)
 
 
 #calculate sample margins
@@ -66,6 +66,16 @@ sample_margin <- sample_margin %>%
   group_by(sex, age_group) %>% 
   summarize(count = n()) %>% 
   mutate(proportion = (count / sum(count))) 
+
+#write.csv(sample_margin, here("data", "census", "sample_margin.csv"))
+
+#the sample margin length must match the population margin so I exported the csv with all this work and made sure they matched. I reloaded the data in as a new csv that perfectly matches the poulation margins 'target' one
+
+sample_margin <- read_csv(here("data", "census", "sample_margin_2.csv"))
+```
+
+```{r weighting}
+weighted <- rake(survey, sample.margins = sample_margin, population.margins = target)
 ```
 
 
