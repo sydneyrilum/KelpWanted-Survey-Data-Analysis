@@ -19,6 +19,7 @@ library(survey)
 library(srvyr)
 library(jtools)
 library(remotes)
+library(anesrake)
 ```
 
 ```{r create pop and sample margins}
@@ -74,7 +75,6 @@ sample_margin <- sample_margin %>%
 sample_margin <- read_csv(here("data", "census", "sample_margin_2.csv"))
 ```
 
-
 ```{r create age group categories in the survey data}
 survey$q31 <- as.integer(survey$q31)
 
@@ -99,8 +99,15 @@ survey<- survey%>%
     q32 == "non-binary"~ "NA")) %>% 
   filter(sex != "NA") %>% 
   filter(age_group != "5-9") 
-  
+
 ```
+
+
+```{r weights for the sample using `weights::wpct` }
+wpct(survey$q32)
+wpct(survey$age_group)
+```
+
 
 
 ```{r weighting}
@@ -113,7 +120,7 @@ target <- target %>%
          age_group != "9-May",
          age_group != "14-Oct")
 
-weighted <- rake(survey, sample.margins = sample_margin, population.margins = target)
+weighted <- anesrakefinder(target, survey, choosemethod = "total")
 ```
 
 
