@@ -5,7 +5,7 @@ date: "2/11/2022"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE, message= FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
@@ -21,24 +21,54 @@ library(jtools)
 library(remotes)
 ```
 
-```{r}
+```{r create pop and sample margins}
 #load data 
 survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
 
 #set targets
-taret <- read.csv(here("data","census", "population_margins.csv")) %>% 
+target <- read.csv(here("data","census", "population_margins.csv")) %>% 
   clean_names() %>% 
   select(age_group, sex, prop_sbv_res)
+
+
+#calculate sample margins
+sample_margin <- survey
+
+sample_margin$q31 <- as.integer(sample_margin$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+sample_margin<- sample_margin%>% 
+  mutate(age= 2022- q31) 
+
+sample_margin$age_group <- cut(sample_margin$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+sample_margin <- sample_margin %>% 
+  mutate(age_group = case_when(
+    age_group == "85-89" ~ "85+",
+    age_group == "90-94" ~ "85+",
+    age_group == "95-99" ~ "85+",
+    TRUE ~ as.character (age_group))) %>% 
+  select(q32, age_group) %>% 
+  drop_na()
+
+colnames(sample_margin) <- c("sex", "age_group")
+  
+sample_margin <- sample_margin %>% 
+  mutate(sex = case_when(
+    sex == "Woman" ~ "female",
+    sex == "Man" ~ "male",
+    sex == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") %>% 
+  group_by(sex, age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
 ```
 
-```{r}
 
-```
-
-
-```{r}
-ranking <- anesrake()
-```
 
 
 
