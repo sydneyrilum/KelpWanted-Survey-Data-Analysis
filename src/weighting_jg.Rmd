@@ -69,12 +69,50 @@ sample_margin <- sample_margin %>%
 
 #write.csv(sample_margin, here("data", "census", "sample_margin.csv"))
 
-#the sample margin length must match the population margin so I exported the csv with all this work and made sure they matched. I reloaded the data in as a new csv that perfectly matches the poulation margins 'target' one
+#the sample margin length must match the population margin so I exported the csv with all this work and manaually manipulated it in Excel to make sure it matched.  I reloaded the data in as a new csv "sample_margins_2.csv" that perfectly matches the population margins 'target' dataframe
 
 sample_margin <- read_csv(here("data", "census", "sample_margin_2.csv"))
 ```
 
+
+```{r create age group categories in the survey data}
+survey$q31 <- as.integer(survey$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+survey<- survey %>% 
+  mutate(age= 2022- q31) 
+
+survey$age_group <- cut(survey$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+survey<- survey%>% 
+  mutate(age_group = case_when(
+    age_group == "85-89" ~ "85+",
+    age_group == "90-94" ~ "85+",
+    age_group == "95-99" ~ "85+",
+    TRUE ~ as.character (age_group))) %>% 
+    mutate(sex = case_when(
+    q32 == "Woman" ~ "female",
+    q32 == "Man" ~ "male",
+    q32 == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") 
+  
+```
+
+
 ```{r weighting}
+sample_margin <- sample_margin %>% 
+  filter(age_group != "0-4",
+         age_group != "9-May",
+         age_group != "14-Oct")
+target <- target %>% 
+    filter(age_group != "0-4",
+         age_group != "9-May",
+         age_group != "14-Oct")
+
 weighted <- rake(survey, sample.margins = sample_margin, population.margins = target)
 ```
 
