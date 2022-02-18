@@ -336,6 +336,9 @@ m2 <- polr(factor(q2) ~q13, data=ordinal_log_reg_knowledge, Hess =TRUE)
 summary(m2)
 ```
 
+the q13 coefficient value represents the eta so as eta gets bigger then zeta gets smaller. 
+
+Intercepts are the zeta values. 
 
 ```{r understand odds ratio}
 #interpret odds ratio to probabilities. Outside parenthesis are important 
@@ -440,6 +443,9 @@ newdf <- data.frame(q10 =c(1, 2, 3, 4))
 (phat <- predict(object = m1, newdf, type = "p"))
 ```
 
+From Casey O'Hara: cool data visualization could be probability of support on the x axis and knowledge on the y axis to show the relative 
+
+You can runt hese combined. Do a chi-squared on knowledge and perception to understand the relationship among the two 
 
 ### Demographics 
 
@@ -519,19 +525,20 @@ female_dist <-female_dist %>%
 ```
 
 ```{r load and prep sample demographics}
-#Load sample data
-survey_data_tidy_sbv_filtered$q31 <- as.integer(survey_data_tidy_sbv_filtered$q31)
+
+sample_margin <- survey_data_tidy_sbv_filtered
+#Create sample margins
+sample_margin$q31 <- as.integer(sample_margin$q31)
 
 #create bins for age
 labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
                 sep = "-"), paste(100, "+", sep = ""))
 
-age <- survey_data_tidy_sbv_filtered%>% 
+sample_margin<- sample_margin%>% 
   mutate(age= 2022- q31) 
 
 
-age$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
-
+sample_margin$age_group <- cut(age$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
 
 ```
 
