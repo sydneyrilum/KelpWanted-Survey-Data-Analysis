@@ -25,7 +25,8 @@ library(MASS)         #for ordered logist or probit regression
 library(conflicted)  # allows for choosing preference over conflicting functions from different packages
 library(RColorBrewer)
 library(reshape)
-conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
+library(lattice)
+conflict_prefer("select", "dplyr")# use select function from tidyverse/dplyr package > from raster package
 conflict_prefer("filter", "dplyr")
 conflict_prefer("chisq.test", "janitor")
 conflict_prefer("fisher.test", "janitor")
@@ -264,8 +265,8 @@ age_perception <- survey_data_tidy_sbv_filtered %>%
 dems$q31 <- as.integer(dems$q31)
 ```
 
-## Regression Models : Relationship between Knowledge and Support 
-####Relationship Between knowledge and support
+## Regression Models : Relationship between Perception and Support 
+####Relationship Between perception and support
 
 *Question:* Is support related to more familiarity/knowledge of seaweed aquaculture?
 
@@ -282,7 +283,7 @@ independent variable = perception (Q13)
 
 
 ```{r regression table }
-# create data frame with Q2 and Q10
+# create data frame with Q2 and Q13 
 
 ordinal_log_reg_knowledge_data <- survey_data_tidy_sbv_long_filtered %>% 
   filter(question == "q2" | 
@@ -349,7 +350,10 @@ exp(cbind(coef(m2), t(ci)))
 
 ```{r predicted probabilities to understand odds ratio}
 newdf_2 <- data.frame(q13 =c(1, 2, 3, 4, 5))
-(phat <- predict(object = m2, newdf_2, type = "p"))
+(phat1 <- predict(object = m2, newdf_2, type = "p"))
+
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
+levelplot(phat1, col.regions= coul)
 ```
 
 
@@ -441,6 +445,12 @@ exp(cbind(coef(m1), t(ci)))
 ```{r predicted probabilities to understand odds ratio}
 newdf <- data.frame(q10 =c(1, 2, 3, 4))
 (phat <- predict(object = m1, newdf, type = "p"))
+
+#coul is the color palette
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
+
+#heatmap
+levelplot(phat, col.regions= coul)
 ```
 
 From Casey O'Hara: cool data visualization could be probability of support on the x axis and knowledge on the y axis to show the relative 
