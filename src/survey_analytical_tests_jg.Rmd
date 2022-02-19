@@ -43,7 +43,7 @@ survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sb
  filter(response_type != 3)
 ```
 
-## Knowledge 
+## Familiarity
 
 We test the relationship between people's familiarity with aquaculture and their perceptions of seaweed aquaculture using a chi-squared test. 
 
