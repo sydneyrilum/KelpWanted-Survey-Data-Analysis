@@ -457,6 +457,90 @@ From Casey O'Hara: cool data visualization could be probability of support on th
 
 You can runt hese combined. Do a chi-squared on knowledge and perception to understand the relationship among the two 
 
+
+####Relationship Between Perception and Familiarity: 
+
+*Question:* Is perception related to familiarity with seaweed aquaculture?
+
+*Hypothesis:* 
+
+*Assumptions:* 
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of 
+
+
+dependent variable = perception (q10)
+independent variable = familiarity (Q13)
+
+
+```{r regression table }
+# create data frame with Q10 and Q13
+
+ordinal_log_reg_3_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% #filter out self-collected data
+  filter(question == "q10" | 
+         question == "q13") %>%
+  mutate(answer = case_when( 
+    answer == "Very familiar" ~ 1,
+    answer == "Basic understanding" ~ 2,
+    answer == "Heard of it, but don't know details" ~ 3,
+    answer == "Never heard of it" ~ 4,
+    answer == "Very Positive" ~ 1,
+    answer == "Positive" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Negative" ~ 4,
+    answer == "Very Negative" ~ 5,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_3 <- ordinal_log_reg_3_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q10 != "NA")  %>% # remove incomplete responses
+  filter(q13 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_3_table<- ordinal_log_reg_3 %>% 
+  tabyl(q10, q13) %>% 
+  column_to_rownames(var = "q10")
+
+summary(ordinal_log_reg_3_table)
+
+```
+
+```{r create ordinal logistic model}
+#use polr to create a logit model to understand how familiarity influences expansion
+m3 <- polr(factor(q10) ~q13, data=ordinal_log_reg_3, Hess =TRUE)
+summary(m3)
+```
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci3 <- confint(m3))
+exp(cbind(coef(m3), t(ci3)))
+```
+
+```{r predicted probabilities to understand odds ratio}
+newdf3 <- data.frame(q13 =c(1, 2, 3, 4))
+(phat3 <- predict(object = m3, newdf3, type = "p"))
+
+#coul is the color palette
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
+
+#heatmap
+levelplot(phat3, col.regions= coul)
+```
+
+
+
+
+
+
 ### Demographics 
 
 Comparison of our survey demographics with demographics from Santa Barbara and Ventura Counties. 
