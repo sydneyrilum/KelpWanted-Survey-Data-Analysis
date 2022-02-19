@@ -374,7 +374,7 @@ levelplot(phat1, col.regions= coul)
 
 
 dependent variable = support (Q2)
-independent variable = knowledge (Q10)
+independent variable = familiarity (Q10)
 
 
 ```{r regression table }
@@ -470,8 +470,8 @@ You can runt hese combined. Do a chi-squared on knowledge and perception to unde
 *Statistical Test:* Ordinal logistic regression of 
 
 
-dependent variable = perception (q10)
-independent variable = familiarity (Q13)
+dependent variable = perception (q13)
+independent variable = familiarity (Q10)
 
 
 ```{r regression table }
@@ -482,15 +482,15 @@ ordinal_log_reg_3_data <- survey_data_tidy_sbv_long_filtered %>%
   filter(question == "q10" | 
          question == "q13") %>%
   mutate(answer = case_when( 
-    answer == "Very familiar" ~ 1,
-    answer == "Basic understanding" ~ 2,
-    answer == "Heard of it, but don't know details" ~ 3,
-    answer == "Never heard of it" ~ 4,
-    answer == "Very Positive" ~ 1,
-    answer == "Positive" ~ 2,
-    answer == "Neutral" ~ 3,
-    answer == "Negative" ~ 4,
-    answer == "Very Negative" ~ 5,
+    answer == "Very familiar" ~ 4,
+    answer == "Basic understanding" ~ 3,
+    answer == "Heard of it, but don't know details" ~ 2,
+    answer == "Never heard of it" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
     answer == "Unsure/Not familiar" ~ -999)) %>%
   replace_with_na(replace = list(answer = -999))%>% 
   filter(answer != "NA") # remove incomplete responses
@@ -506,8 +506,8 @@ ordinal_log_reg_3 <- ordinal_log_reg_3_data %>%
   filter(q13 != "NA") # remove incomplete responses
   
 ordinal_log_reg_3_table<- ordinal_log_reg_3 %>% 
-  tabyl(q10, q13) %>% 
-  column_to_rownames(var = "q10")
+  tabyl(q13, q10) %>% 
+  column_to_rownames(var = "q13")
 
 summary(ordinal_log_reg_3_table)
 
@@ -515,7 +515,7 @@ summary(ordinal_log_reg_3_table)
 
 ```{r create ordinal logistic model}
 #use polr to create a logit model to understand how familiarity influences expansion
-m3 <- polr(factor(q10) ~q13, data=ordinal_log_reg_3, Hess =TRUE)
+m3 <- polr(factor(q13) ~q10, data=ordinal_log_reg_3, Hess =TRUE)
 summary(m3)
 ```
 
@@ -526,15 +526,113 @@ exp(cbind(coef(m3), t(ci3)))
 ```
 
 ```{r predicted probabilities to understand odds ratio}
-newdf3 <- data.frame(q13 =c(1, 2, 3, 4))
+newdf3 <- data.frame(q10 =c(1, 2, 3, 4))
 (phat3 <- predict(object = m3, newdf3, type = "p"))
 
 #coul is the color palette
 coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
 
 #heatmap
-levelplot(phat3, col.regions= coul)
+levelplot(phat3, col.regions= coul) 
 ```
+
+
+####Relationship Between Support and Perception & Familiarity: 
+
+*Question:* Is support related to level of familiarity with and perception of seaweed aquaculture?
+
+*Hypothesis:* 
+
+*Assumptions:* 
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of 
+
+
+dependent variable = support (Q2)
+independent variables = familiarity (Q10) & perception (Q13)
+
+
+```{r regression table }
+# create data frame with Q10 and Q13
+
+ordinal_log_reg_4_data <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(response_type != 3) %>% #filter out self-collected data
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q10"|
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q10" ~ "q10",
+    question == "q13" ~ "q13")) %>% 
+  mutate(answer = case_when(
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very familiar" ~ 4,
+    answer == "Basic understanding" ~ 3,
+    answer == "Heard of it, but don't know details" ~ 2,
+    answer == "Never heard of it" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_4 <- ordinal_log_reg_4_data %>% 
+  select(response_id, question, answer) %>% 
+  spread(question, answer) %>% 
+  filter(q2 != "NA") %>% 
+  filter(q10 != "NA")  %>% # remove incomplete responses
+  filter(q13 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_4_table<- ordinal_log_reg_4 %>% 
+  tabyl(q2, q13, q10) %>% 
+  column_to_rownames(var = "q2")
+
+summary(ordinal_log_reg_4_table)
+
+```
+
+```{r create ordinal logistic model}
+#use polr to create a logit model to understand how familiarity influences expansion
+m4 <- polr(factor(q2) ~q10 + q13, data=ordinal_log_reg_4, Hess =TRUE)
+summary(m4)
+```
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci4 <- confint(m4))
+exp(cbind(coef(m4), t(ci4)))
+```
+
+```{r predicted probabilities to understand odds ratio}
+newdf4 <- data.frame(q2 =c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+(phat4 <- predict(object = m4, newdf4, type = "p"))
+
+#coul is the color palette
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
+
+#heatmap
+levelplot(phat4, col.regions= coul) 
+```
+
+
 
 
 
