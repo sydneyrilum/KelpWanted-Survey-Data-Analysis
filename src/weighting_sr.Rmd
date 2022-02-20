@@ -11,20 +11,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(janitor)
-library(data.table)  # advanced pivot_table tools
-library(naniar)      # replace NA tools
-library(sf)          # read in shapefiles
-#library(tmap)        # interactive maps
-library(zipcodeR)    # for zipcode assignment by county
-#library(raster)      # for mapping raster layers
-#library(dplyr)       # needed ONLY if working on a windows computer
-library(ggwordcloud) # create wordcloud plots
-library(patchwork)   # for stacking plots
-library(kableExtra)  # for making tables
 
-#library(conflicted)  # allows for choosing preference over conflicting functions from different packages
-#conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
-#conflict_prefer("filter", "dplyr")
+#packages for survey analysis
+library(haven)
+library(anesrake)
+library(weights)
+library(survey)
+library(srvyr)
+library(jtools)
+library(remotes)
+library(anesrake)
 ```
 
 ## Data Set-up
@@ -75,7 +71,153 @@ weighted_gender_counts <- survey_data_tidy_sbv_long_filtered %>%
 ```
 
 
+## Weighting with `anesrake` package
 
+```{r create pop and sample margins}
+# load survey data 
+survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+# load in SBV population targets
+population_margin <- read.csv(here("data","census", "population_margins.csv")) %>% 
+  clean_names() %>% 
+  select(sex, age_group, proportion)
+
+# calculate sample margins from survey
+sample_margin <- survey
+
+sample_margin$q31 <- as.integer(sample_margin$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), 
+                seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), 
+          paste(100, "+", sep = ""))
+
+# calculate age from birth year
+sample_margin <- sample_margin %>% 
+  mutate(age = 2022- q31) 
+
+sample_margin$age_group <- cut(sample_margin$age, 
+                               breaks = c(seq(0, 100, by = 5), Inf), 
+                               labels = labs, 
+                               right = FALSE)
+
+sample_margin <- sample_margin %>% 
+  mutate(age_group = case_when(
+    age_group == "85-89" ~ "85+",
+    age_group == "90-94" ~ "85+",
+    age_group == "95-99" ~ "85+",
+    TRUE ~ as.character (age_group))) %>% 
+  select(q32, age_group) 
+
+colnames(sample_margin) <- c("sex", "age_group")
+  
+sample_margin <- sample_margin %>% 
+  mutate(sex = case_when(
+    sex == "Woman" ~ "female",
+    sex == "Man" ~ "male",
+    sex == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") %>% 
+  group_by(sex, age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+```
+
+```{r create age group categories in the survey data}
+survey$q31 <- as.integer(survey$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+survey<- survey %>% 
+  mutate(age= 2022- q31) 
+
+survey$age_group <- cut(survey$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+survey<- survey%>% 
+  mutate(age_group = case_when(
+    age_group == "85-89" ~ "85+",
+    age_group == "90-94" ~ "85+",
+    age_group == "95-99" ~ "85+",
+    TRUE ~ as.character (age_group))) %>% 
+    mutate(sex = case_when(
+    q32 == "Woman" ~ "female",
+    q32 == "Man" ~ "male",
+    q32 == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") 
+
+```
+
+
+```{r weights for the sample using `weights::wpct`}
+wpct(survey$q32)
+wpct(survey$age_group)
+```
+
+
+```{r weighting}
+# remove age groups below 18+
+sample_margin <- sample_margin %>% 
+  filter(age_group != "0-4",
+         age_group != "5-9",
+         age_group != "10-14")
+population_margin <- population_margin %>% 
+  filter(age_group != "0-4",
+         age_group != "5-9",
+         age_group != "10-14")
+```
+
+```{r}
+sample_margin <- with(population_margin, list(
+  sex  = wpct(sex, proportion),
+  age_group  = wpct(age_group, proportion)))
+
+# store marginal proportions in a list
+str(sample_margin)
+```
+
+
+
+```{r}
+#### maybe can't use characters, need to be numeric to weight??
+
+## or calculate weight from proportion columns!!!
+
+survey$sex <- as.character(survey$sex)
+survey$age_group <- as.character(survey$age_group)
+population_margin$sex <- as.character(population_margin$sex)
+population_margin$age_group <- as.character(population_margin$age_group)
+
+raking <- anesrake(inputter = population_margin, 
+                   dataframe = survey, 
+                   caseid = survey$response_id,
+                   choosemethod = "total")
+
+#raking_summary <- summary(raking)
+#raking_summary
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+postStratify(survey, sample_margin, population_margin)
+
+rake(survey, sample_margin, population_margin, 
+     control = list(maxit = 10, epsilon = 1, verbose=FALSE), compress=NULL)
+
+#weighted <- anesrakefinder(population_margin, survey, choosemethod = "total")
+```
 
 
 
