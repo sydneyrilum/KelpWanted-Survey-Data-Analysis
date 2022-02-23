@@ -256,7 +256,7 @@ The Fisher exact test rejected the null hypothesis- that the two variables are i
 
 #### Age v. Perception
 
-In this seciton we will compare age with perception
+In this section we will compare age with perception
 
 ```{r}
 age_perception <- survey_data_tidy_sbv_filtered %>% 
@@ -265,12 +265,15 @@ age_perception <- survey_data_tidy_sbv_filtered %>%
 dems$q31 <- as.integer(dems$q31)
 ```
 
-## Regression Models : Relationship between Perception and Support 
+
+
+## Regression Models 
+
 ####Relationship Between perception and support
 
-*Question:* Is support related to more familiarity/knowledge of seaweed aquaculture?
+*Question:* Is support related to more postie perception of seaweed aquaculture?
 
-*Hypothesis:* Those who are familiar with aquaculture will have more polarized opinions. Those less familiar will have more positive views of kelp aquaculture. 
+*Hypothesis:* Those who view seaweed aquaculture more positively will be more likely to be in support of seaweed aquaculture expansion.
 
 *Assumptions:* 
 - Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
@@ -353,18 +356,21 @@ newdf_2 <- data.frame(q13 =c(1, 2, 3, 4, 5))
 (phat1 <- predict(object = m2, newdf_2, type = "p"))
 
 coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
-levelplot(phat1, col.regions= coul)
+levelplot(phat1, col.regions= coul,
+          xlab = "perception",
+          ylab = "support",
+          main = "Predicted Probabilities")
 ```
 
 
 
 
-####Relationship Between Perception and Support: 
+####Relationship Between Familiarity and Support: 
 
 
-*Question:* Is support related to more positive perceptions of seaweed aquaculture?
+*Question:* Does familiarity with seaweed aquaculture depend on whether or not one is in support of aquaculture?
 
-*Hypothesis:* Yes, supporters will have more positive perceptions of seaweed aquaculture.
+*Hypothesis:* Yes, supporters will be more familiar with seaweed aquaculture.
 
 *Assumptions:* 
 - Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
@@ -374,7 +380,7 @@ levelplot(phat1, col.regions= coul)
 
 
 dependent variable = support (Q2)
-independent variable = knowledge (Q10)
+independent variable = familiarity (Q10)
 
 
 ```{r regression table }
@@ -450,7 +456,10 @@ newdf <- data.frame(q10 =c(1, 2, 3, 4))
 coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
 
 #heatmap
-levelplot(phat, col.regions= coul)
+levelplot(phat, col.regions= coul,
+          xlab = "familiarity",
+          ylab = "support",
+          main = "Predicted Probabilities")
 ```
 
 From Casey O'Hara: cool data visualization could be probability of support on the x axis and knowledge on the y axis to show the relative 
@@ -470,8 +479,8 @@ You can runt hese combined. Do a chi-squared on knowledge and perception to unde
 *Statistical Test:* Ordinal logistic regression of 
 
 
-dependent variable = perception (q10)
-independent variable = familiarity (Q13)
+dependent variable = perception (q13)
+independent variable = familiarity (Q10)
 
 
 ```{r regression table }
@@ -482,15 +491,15 @@ ordinal_log_reg_3_data <- survey_data_tidy_sbv_long_filtered %>%
   filter(question == "q10" | 
          question == "q13") %>%
   mutate(answer = case_when( 
-    answer == "Very familiar" ~ 1,
-    answer == "Basic understanding" ~ 2,
-    answer == "Heard of it, but don't know details" ~ 3,
-    answer == "Never heard of it" ~ 4,
-    answer == "Very Positive" ~ 1,
-    answer == "Positive" ~ 2,
-    answer == "Neutral" ~ 3,
-    answer == "Negative" ~ 4,
-    answer == "Very Negative" ~ 5,
+    answer == "Very familiar" ~ 4,
+    answer == "Basic understanding" ~ 3,
+    answer == "Heard of it, but don't know details" ~ 2,
+    answer == "Never heard of it" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
     answer == "Unsure/Not familiar" ~ -999)) %>%
   replace_with_na(replace = list(answer = -999))%>% 
   filter(answer != "NA") # remove incomplete responses
@@ -506,8 +515,8 @@ ordinal_log_reg_3 <- ordinal_log_reg_3_data %>%
   filter(q13 != "NA") # remove incomplete responses
   
 ordinal_log_reg_3_table<- ordinal_log_reg_3 %>% 
-  tabyl(q10, q13) %>% 
-  column_to_rownames(var = "q10")
+  tabyl(q13, q10) %>% 
+  column_to_rownames(var = "q13")
 
 summary(ordinal_log_reg_3_table)
 
@@ -515,7 +524,7 @@ summary(ordinal_log_reg_3_table)
 
 ```{r create ordinal logistic model}
 #use polr to create a logit model to understand how familiarity influences expansion
-m3 <- polr(factor(q10) ~q13, data=ordinal_log_reg_3, Hess =TRUE)
+m3 <- polr(factor(q13) ~q10, data=ordinal_log_reg_3, Hess =TRUE)
 summary(m3)
 ```
 
@@ -526,15 +535,107 @@ exp(cbind(coef(m3), t(ci3)))
 ```
 
 ```{r predicted probabilities to understand odds ratio}
-newdf3 <- data.frame(q13 =c(1, 2, 3, 4))
+newdf3 <- data.frame(q10 =c(1, 2, 3, 4))
 (phat3 <- predict(object = m3, newdf3, type = "p"))
 
 #coul is the color palette
 coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
 
 #heatmap
-levelplot(phat3, col.regions= coul)
+levelplot(phat3, col.regions= coul,
+          xlab = "familiarity",
+          ylab = "perception",
+          main = "Predicted Probabilities") 
 ```
+
+
+####Relationship Between Support and Perception & Familiarity: 
+
+*Question:* Is support related to level of familiarity with and perception of seaweed aquaculture?
+
+*Hypothesis:* 
+
+*Assumptions:* 
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of 
+
+
+dependent variable = support (Q2)
+independent variables = perception (Q13) & age group(calculated)
+
+
+```{r regression table age group & perception v. support }
+# create data frame with age_group and Q13
+ordinal_log_reg_4_data <- age %>% 
+  filter(response_type != 3) %>% #filter out self-collected data
+  select (age_group, q13, q2,q4, q6, q8) %>%
+  unite("support", q2:q8,sep = "", na.rm = TRUE) %>% 
+  mutate(support = case_when(
+    support == "Strongly opposed" ~ -2,
+    support == "Somewhat opposed" ~ -1,
+    support == "Neither opposed nor in support" ~ 0,
+    support == "Somewhat supportive" ~ 1,
+    support == "Strongly supportive" ~ 2)) %>% 
+  mutate(q13 = case_when(
+    q13 == "Very Positive" ~ 2,
+    q13  == "Positive" ~ 1,
+    q13 == "Neutral" ~ 0,
+    q13 == "Negative" ~ -1,
+    q13 == "Very Negative" ~ -2,
+    q13 == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(support = -999))%>% 
+   replace_with_na(replace = list(q13 = -999))%>%  
+  replace_with_na(replace = list(age_group = -999)) %>% 
+  filter(support != "NA") %>% 
+  filter(age_group != "NA")  %>% # remove incomplete responses
+  filter(q13 != "NA") %>% 
+  filter(age_group != "5-9")
+
+# remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+ordinal_log_reg_4 <- ordinal_log_reg_4_data %>% 
+  filter(support != "NA") %>% 
+  filter(age_group != "NA")  %>% # remove incomplete responses
+  filter(q13 != "NA") # remove incomplete responses
+  
+ordinal_log_reg_4_table<- ordinal_log_reg_4 %>% 
+  tabyl(q2, age_group, q10) %>% 
+  column_to_rownames(var = "support")
+
+summary(ordinal_log_reg_4_table)
+
+```
+
+```{r create ordinal logistic model}
+#use polr to create a logit model to understand how familiarity influences expansion
+m4 <- polr(factor(support) ~q13+ age_group, data=ordinal_log_reg_4, Hess =TRUE)
+
+summary(m4)
+```
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci4 <- confint(m4))
+exp(cbind(coef(m4), t(ci4)))
+```
+
+```{r predicted probabilities to understand odds ratio}
+newdf4 <- data.frame(q2 =c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+(phat4 <- predict(object = m4, newdf4, type = "p"))
+
+#coul is the color palette
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
+
+#heatmap
+levelplot(phat4, col.regions= coul) 
+```
+
+
 
 
 
