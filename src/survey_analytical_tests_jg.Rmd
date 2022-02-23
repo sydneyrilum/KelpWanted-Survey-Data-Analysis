@@ -570,7 +570,7 @@ independent variables = perception (Q13) & age group(calculated)
 ordinal_log_reg_4_data <- age %>% 
   filter(response_type != 3) %>% #filter out self-collected data
   select (age_group, q13, q2,q4, q6, q8) %>%
-  unite("support", q2:q8,sep = "", na.rm = TRUE) %>% 
+  unite("support", q2:q8, sep = "") %>% 
   mutate(support = case_when(
     support == "Strongly opposed" ~ -2,
     support == "Somewhat opposed" ~ -1,
@@ -590,7 +590,10 @@ ordinal_log_reg_4_data <- age %>%
   filter(support != "NA") %>% 
   filter(age_group != "NA")  %>% # remove incomplete responses
   filter(q13 != "NA") %>% 
-  filter(age_group != "5-9")
+  filter(age_group != "5-9") 
+  
+
+
 
 # remove incomplete responses
 
@@ -598,14 +601,19 @@ ordinal_log_reg_4_data <- age %>%
 
 ```{r}
 # use spread() to pivot table to wide format
+
+##need to figure out how to make a 3 variable dataframe in R 
+
 ordinal_log_reg_4 <- ordinal_log_reg_4_data %>% 
   filter(support != "NA") %>% 
   filter(age_group != "NA")  %>% # remove incomplete responses
   filter(q13 != "NA") # remove incomplete responses
   
 ordinal_log_reg_4_table<- ordinal_log_reg_4 %>% 
-  tabyl(q2, age_group, q10) %>% 
-  column_to_rownames(var = "support")
+  group_by(support) %>% 
+  tabyl(support, age_group, q13) 
+
+as.tibble(ordinal_log_reg_4_table)
 
 summary(ordinal_log_reg_4_table)
 
@@ -613,7 +621,7 @@ summary(ordinal_log_reg_4_table)
 
 ```{r create ordinal logistic model}
 #use polr to create a logit model to understand how familiarity influences expansion
-m4 <- polr(factor(support) ~q13+ age_group, data=ordinal_log_reg_4, Hess =TRUE)
+m4 <- polr(factor(support) ~q13 + age_group, data=ordinal_log_reg_4, Hess =TRUE)
 
 summary(m4)
 ```
