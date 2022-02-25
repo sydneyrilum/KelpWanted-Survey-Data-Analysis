@@ -250,6 +250,24 @@ max((survey_data_tidy$duration_in_seconds)/60) # potential outlier
 ```
 
 
+
+###### START HERE
+
+```{r}
+survey_data_tidy_sbv_filtered <- read.csv(here("data","survey_data_tidy_sbv_filtered.csv"))
+survey_data_tidy_sbv_long_filtered <- read.csv(here("data","survey_data_tidy_sbv_long_filtered.csv"))
+```
+
+
+
+
+
+
+
+
+
+
+
 ## Wording Experiment - Does word choice influence residents' support for kelp aquaculture? 
 
 ```{r}
@@ -346,7 +364,7 @@ wording_exp_stats <- wording_exp %>%
 
 # alternative data frame
 support_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
+  select(question, answer, weight) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -364,10 +382,10 @@ support_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>%
     answer == "Strongly supportive" ~ 5)) %>%
   drop_na() %>% 
   group_by(question, answer, number) %>% 
-  summarize(count = n()) %>% 
+  summarize(sum = sum(weight)) %>% 
   ungroup() %>% 
   group_by(question) %>% 
-  mutate(proportion = (count / sum(count)))
+  mutate(proportion = (sum/nrows()))
 
 # Specify categorical order of questions and answers
 support_aq_stacked_bar$answer <- factor(support_aq_stacked_bar$answer, levels = c("Strongly opposed", 
@@ -474,7 +492,7 @@ combined_support_answers <- survey_data_tidy_sbv_long_filtered %>%
     question == "q8" ~ "q2")) %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
-  group_by(question, answer) %>% 
+  group_by(answer) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
   group_by(question) %>% 
