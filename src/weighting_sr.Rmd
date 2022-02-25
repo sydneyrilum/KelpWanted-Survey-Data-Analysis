@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
 library(here)
+library(data.table) 
 
 #packages for survey analysis
 library(haven)
@@ -26,7 +27,7 @@ library(anesrake)
 
 ```{r create pop and sample margins}
 #load data 
-survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+survey <- read_csv(here("data", "archived survey data (unweighted)", "survey_data_tidy_sbv_filtered.csv"))
 
 #set targets
 population_margin <- read.csv(here("data","census", "population_margins.csv")) %>% 
@@ -118,15 +119,14 @@ weights <- read.csv(here("data", "census", "population_sample_margin_weights_adj
 
 # add weight column to survey data column
 survey_weights <- merge(survey, weights,
-                        by.x = c("age_group", "sex"),
-                        by.y = c("age_group", "sex"))
+                        by = c("age_group", "sex"))
 
 # convert data frame into a data table (USING SAME FILE NAMES)
 survey_data_tidy_sbv_filtered <- as.data.table(survey_weights)
 
 # use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
 survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_filtered %>% 
-  melt(id.vars = c("response_id", "response_type", "finished", "duration_in_seconds", "county", "age", "age_group", "sex",
+  melt(id.vars = c("response_id", "response_type", "finished", "duration_in_seconds", "county", "age", "age_group", "sex", "weight",
                    "q31", "q32", "q33", "q34", "q35", "q36", "q37", "q38", "q39", "q39_7_text", "q40", "q40_8_text"), 
        variable.name = "question", 
        value.name = "answer")
