@@ -133,48 +133,13 @@ survey_data_tidy_sbv_long_filtered <- survey_weights %>%
        value.name = "answer")
 
 # export data frame as CSV
-#write.csv(survey_data_tidy_sbv_filtered,
-#          file = here("data", "survey_data_tidy_sbv_filtered.csv"))
+write.csv(survey_data_tidy_sbv_filtered,
+          file = here("data", "survey_data_tidy_sbv_filtered.csv"))
 
-#write.csv(survey_data_tidy_sbv_long_filtered,
-#          file = here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+write.csv(survey_data_tidy_sbv_long_filtered,
+          file = here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r weights for the sample using `weights::wpct` }
-wpct(survey$q32)
-wpct(survey$age_group)
-```
-
-
-
-```{r weighting}
-sample_margin <- sample_margin %>% 
-  filter(age_group != "0-4",
-         age_group != "9-May",
-         age_group != "14-Oct")
-target <- target %>% 
-    filter(age_group != "0-4",
-         age_group != "9-May",
-         age_group != "14-Oct")
-
-weighted <- anesrakefinder(target, survey, choosemethod = "total")
-```
 
 
 
