@@ -121,17 +121,18 @@ survey_weights <- merge(survey, weights,
                         by.x = c("age_group", "sex"),
                         by.y = c("age_group", "sex"))
 
-# convert data frame into a data table
-survey_data_tidy_sbv_long_filtered <- as.data.table(survey_weights)
+# convert data frame into a data table (USING SAME FILE NAMES)
 survey_data_tidy_sbv_filtered <- as.data.table(survey_weights)
 
 # use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
-survey_data_tidy_sbv_long_filtered <- survey_weights %>% 
+survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_filtered %>% 
   melt(id.vars = c("response_id", "response_type", "finished", "duration_in_seconds", "county", "age", "age_group", "sex",
                    "q31", "q32", "q33", "q34", "q35", "q36", "q37", "q38", "q39", "q39_7_text", "q40", "q40_8_text"), 
        variable.name = "question", 
        value.name = "answer")
+```
 
+```{r}
 # export data frame as CSV
 write.csv(survey_data_tidy_sbv_filtered,
           file = here("data", "survey_data_tidy_sbv_filtered.csv"))
@@ -139,8 +140,6 @@ write.csv(survey_data_tidy_sbv_filtered,
 write.csv(survey_data_tidy_sbv_long_filtered,
           file = here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 ```
-
-
 
 
 
