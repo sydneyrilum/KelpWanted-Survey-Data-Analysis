@@ -7,34 +7,196 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-# Load necessary packages
 library(tidyverse)
-library(here)
 library(janitor)
-library(data.table)  # advanced pivot_table tools
-library(naniar)      # replace NA tools
-library(sf)          # read in shapefiles
-#library(tmap)        # interactive maps
-library(zipcodeR)    # for zipcode assignment by county
-#library(raster)      # for mapping raster layers
-#library(dplyr)       # needed ONLY if working on a windows computer
-library(ggwordcloud) # create wordcloud plots
-library(patchwork)   # for stacking plots
-library(kableExtra)  # for making tables
+library(here)
 
-#library(conflicted)  # allows for choosing preference over conflicting functions from different packages
-#conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
-#conflict_prefer("filter", "dplyr")
+#packages for survey analysis
+library(haven)
+library(anesrake)
+library(weights)
+library(survey)
+library(srvyr)
+library(jtools)
+library(remotes)
+library(anesrake)
 ```
 
 ## Data Set-up
 
+```{r create pop and sample margins}
+#load data 
+survey <- read_csv(here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+#set targets
+population_margin <- read.csv(here("data","census", "population_margins.csv")) %>% 
+  clean_names() %>% 
+  select(sex, age_group, proportion)
+
+
+#calculate sample margins
+sample_margin <- survey
+
+sample_margin$q31 <- as.integer(sample_margin$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+sample_margin<- sample_margin%>% 
+  mutate(age= 2022- q31) 
+
+sample_margin$age_group <- cut(sample_margin$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+sample_margin <- sample_margin %>% 
+  mutate(age_group = case_when(
+    age_group == "80-84" ~ "80+",
+    age_group == "85-89" ~ "80+",
+    age_group == "90-94" ~ "80+",
+    age_group == "95-99" ~ "80+",
+    TRUE ~ as.character (age_group))) %>% 
+  select(q32, age_group) %>% 
+  drop_na()
+
+colnames(sample_margin) <- c("sex", "age_group")
+  
+sample_margin <- sample_margin %>% 
+  mutate(sex = case_when(
+    sex == "Woman" ~ "female",
+    sex == "Man" ~ "male",
+    sex == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") %>% 
+  group_by(sex, age_group) %>% 
+  summarize(count = n()) %>% 
+  mutate(proportion = (count / sum(count))) 
+
+#write.csv(sample_margin, here("data", "census", "sample_margin.csv"))
+```
+
+```{r create age group categories in the survey data}
+survey$q31 <- as.integer(survey$q31)
+
+#create bins for age
+labs <- c(paste(seq(0, 95, by = 5), seq(0 + 5 - 1, 100 - 1, by = 5),
+                sep = "-"), paste(100, "+", sep = ""))
+
+survey<- survey %>% 
+  mutate(age= 2022- q31) 
+
+survey$age_group <- cut(survey$age, breaks = c(seq(0, 100, by = 5), Inf), labels = labs, right = FALSE)
+
+survey<- survey%>% 
+  mutate(age_group = case_when(
+    age_group == "80-84" ~ "80+",
+    age_group == "85-89" ~ "80+",
+    age_group == "90-94" ~ "80+",
+    age_group == "95-99" ~ "80+",
+    TRUE ~ as.character (age_group))) %>% 
+    mutate(sex = case_when(
+    q32 == "Woman" ~ "female",
+    q32 == "Man" ~ "male",
+    q32 == "non-binary"~ "NA")) %>% 
+  filter(sex != "NA") %>% 
+  filter(age_group != "5-9") 
+
+```
+
+
 ```{r}
 # Read in combined survey data for SBV
-survey_data_tidy_sbv_filtered <- read.csv(here("data","survey_data_tidy_sbv_filtered.csv"))
+#survey_data_tidy_sbv_filtered <- read.csv(here("data","survey_data_tidy_sbv_filtered.csv"))
 
-survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+#survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
+
+weights <- read.csv(here("data", "census", "population_sample_margin_weights_adjusted.csv")) %>% 
+    filter(age_group != "0-4",
+           age_group != "5-9",
+           age_group != "10-14") %>% 
+  select(age_group, sex, weight)
+
+
+# add weight column to survey data column
+survey_weights <- merge(survey, weights,
+                        by.x = c("age_group", "sex"),
+                        by.y = c("age_group", "sex"))
+
+# convert data frame into a data table
+survey_data_tidy_sbv_long_filtered <- as.data.table(survey_weights)
+survey_data_tidy_sbv_filtered <- as.data.table(survey_weights)
+
+# use melt() from `datatable` package (advanced version of pivot_longer()) to reshape data from wide to long format
+survey_data_tidy_sbv_long_filtered <- survey_weights %>% 
+  melt(id.vars = c("response_id", "response_type", "finished", "duration_in_seconds", "county", "age", "age_group", "sex",
+                   "q31", "q32", "q33", "q34", "q35", "q36", "q37", "q38", "q39", "q39_7_text", "q40", "q40_8_text"), 
+       variable.name = "question", 
+       value.name = "answer")
+
+# export data frame as CSV
+#write.csv(survey_data_tidy_sbv_filtered,
+#          file = here("data", "survey_data_tidy_sbv_filtered.csv"))
+
+#write.csv(survey_data_tidy_sbv_long_filtered,
+#          file = here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r weights for the sample using `weights::wpct` }
+wpct(survey$q32)
+wpct(survey$age_group)
+```
+
+
+
+```{r weighting}
+sample_margin <- sample_margin %>% 
+  filter(age_group != "0-4",
+         age_group != "9-May",
+         age_group != "14-Oct")
+target <- target %>% 
+    filter(age_group != "0-4",
+         age_group != "9-May",
+         age_group != "14-Oct")
+
+weighted <- anesrakefinder(target, survey, choosemethod = "total")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### disregard below
+
+
+
 
 
 ## Data Weighting
