@@ -70,6 +70,7 @@ sample_margin <- sample_margin %>%
   filter(age_group != "5-9") %>% 
   group_by(sex, age_group) %>% 
   summarize(count = n()) %>% 
+  ungroup() %>% 
   mutate(proportion = (count / sum(count))) 
 
 #write.csv(sample_margin, here("data", "census", "sample_margin.csv"))
@@ -110,7 +111,7 @@ survey<- survey%>%
 
 #survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 
-weights <- read.csv(here("data", "census", "population_sample_margin_weights_adjusted.csv")) %>% 
+weights <- read.csv(here("data", "census", "population_sample_margin_weights.csv")) %>% 
     filter(age_group != "0-4",
            age_group != "5-9",
            age_group != "10-14") %>% 

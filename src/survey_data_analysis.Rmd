@@ -26,6 +26,8 @@ library(kableExtra)  # for making tables
 #library(conflicted)  # allows for choosing preference over conflicting functions from different packages
 #conflict_prefer("select", "dplyr") # use select function from tidyverse/dplyr package > from raster package
 #conflict_prefer("filter", "dplyr")
+#conflict_prefer("summarize", "dplyr")
+#conflict_prefer("group_by", "dplyr")
 ```
 
 # Data Set-up & Cleaning 
@@ -353,7 +355,8 @@ wording_exp_stats <- wording_exp %>%
 ```
 
 
-```{r data viz for Q2,4,6,8}
+
+```{r non-weighted support/opposition graph}
 # Combine Q2,4,6,8
 
 # Are you supportive of or opposed to expanding ______ off the California coast?
@@ -382,10 +385,10 @@ support_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>%
     answer == "Strongly supportive" ~ 5)) %>%
   drop_na() %>% 
   group_by(question, answer, number) %>% 
-  summarize(sum = sum(weight)) %>% 
+  summarize(count = n()) %>% 
   ungroup() %>% 
   group_by(question) %>% 
-  mutate(proportion = (sum/nrows()))
+  mutate(proportion = (count / sum(count)))
 
 # Specify categorical order of questions and answers
 support_aq_stacked_bar$answer <- factor(support_aq_stacked_bar$answer, levels = c("Strongly opposed", 
@@ -414,7 +417,64 @@ ggplot(data = support_aq_stacked_bar,
 
 ```
 
-```{r}
+```{r WEIGHTED support/oppostion graph}
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+support_aq_stacked_bar_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "seaweed farming",
+    question == "q4" ~ "kelp farming",
+    question == "q6" ~ "seaweed aquaculture",
+    question == "q8" ~ "kelp aquaculture")) %>% 
+  mutate(number = case_when( 
+    answer == "Strongly opposed" ~ 1,
+    answer == "Somewhat opposed" ~ 2,
+    answer == "Neither opposed nor in support" ~ 3,
+    answer == "Somewhat supportive" ~ 4,
+    answer == "Strongly supportive" ~ 5)) %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+# Specify categorical order of questions and answers
+support_aq_stacked_bar_weighted$answer <- factor(support_aq_stacked_bar_weighted$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+# percent stacked barchart
+ggplot(data = support_aq_stacked_bar_weighted, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  #scale_fill_manual(values =c("#2C7BB6","#2C7BB6","#FFFFBF","#FDAE61","#FDAE61")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
+```
+
+
+
+```{r non-weighted support/opposition combined categories}
 # alternative data frame
 support_aq_stacked_bar_2 <- survey_data_tidy_sbv_long_filtered %>% 
   select(question, answer) %>% 
@@ -465,13 +525,11 @@ ggplot(data = support_aq_stacked_bar_2,
         legend.position = "right") #+
   #guides(color = guide_legend(reverse=TRUE),
   #       fill = guide_legend(nrow=1, byrow=TRUE))
-
-
 ```
 
 ## Support/Opposition to Aquaculture
 
-```{r}
+```{r COMBINED support/opposition data to Q2}
 # Combine Q2,4,6,8
 
 # Are you supportive of or opposed to expanding ______ off the California coast?
@@ -481,6 +539,7 @@ ggplot(data = support_aq_stacked_bar_2,
 # q8 - kelp aquaculture
 
 combined_support_answers <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -492,11 +551,9 @@ combined_support_answers <- survey_data_tidy_sbv_long_filtered %>%
     question == "q8" ~ "q2")) %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
-  group_by(answer) %>% 
+  group_by(question, answer) %>% 
   summarize(count = n()) %>% 
-  ungroup() %>% 
-  group_by(question) %>% 
-  mutate(proportion = (count / sum(count)))
+  mutate(proportion = (count/sum(count)))
 
 # Specify categorical order of questions and answers
 combined_support_answers$answer <- factor(combined_support_answers$answer, levels = c("Strongly opposed", 
@@ -522,6 +579,98 @@ ggplot(data = combined_support_answers,
        y = "",
        title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
   theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
+
+```
+
+
+```{r WEIGHTED & COMBINED support/opposition data to Q2}
+# Combine Q2,4,6,8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+combined_support_answers_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "combined",
+    question == "q4" ~ "combined",
+    question == "q6" ~ "combined",
+    question == "q8" ~ "combined")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+combined_support_answers_weighted$answer <- factor(combined_support_answers_weighted$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = combined_support_answers_weighted, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "",
+       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") 
+
+```
+```{r weighted combined 5 columns}
+
+# combine data frames
+weighted_support_5col <- rbind(support_aq_stacked_bar_weighted, combined_support_answers_weighted) 
+
+# Specify categorical order of questions and answers
+weighted_support_5col$answer <- factor(weighted_support_5col$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+weighted_support_5col$question <- factor(weighted_support_5col$question, levels = c("kelp aquaculture", 
+                                                                                        "kelp farming", 
+                                                                                        "seaweed aquaculture",
+                                                                                        "seaweed farming",
+                                                                                        "combined"))
+# percent stacked barchart
+ggplot(data = weighted_support_5col, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  #scale_fill_manual(values =c("#2C7BB6","#2C7BB6","#FFFFBF","#FDAE61","#FDAE61")) +
+  labs(x = "",
+       y = "weighted proportion of repsonses",
+       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+  theme_classic() +
   theme(legend.title = element_blank(),
         legend.position = "right") 
 
