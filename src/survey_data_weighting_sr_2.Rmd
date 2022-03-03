@@ -26,7 +26,7 @@ library(anesrake)
 ## Data Set-up
 
 ```{r create pop and sample margins}
-#load data 
+#load data (CSV created in survey_data_wrangling.Rmd)
 survey <- read_csv(here("data", "archived survey data (unweighted)", "survey_data_tidy_sbv_filtered.csv"))
 
 #set targets
@@ -148,23 +148,7 @@ write.csv(survey_data_tidy_sbv_long_filtered,
 
 
 
-
-
-
-
-
-
-
-
-
-
-##### disregard below
-
-
-
-
-
-## Data Weighting
+## Data Viz
 
 ```{r}
 # Gender Identity (Q32)
@@ -200,18 +184,3 @@ weighted_gender_counts <- survey_data_tidy_sbv_long_filtered %>%
   summarize(count = n()) %>% 
   mutate(proportion = (count / sum(count)))
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
