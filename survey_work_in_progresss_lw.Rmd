@@ -36,6 +36,53 @@ survey_data_tidy_sbv_filtered <- read.csv(here("data", "survey_data_tidy_sbv_fil
 
 survey_data_tidy_sbv_long_filtered <- read.csv(here("data", "survey_data_tidy_sbv_long_filtered.csv"))
 ```
+## demographic 
+
+
+
+## Statistical tests
+
+
+# 3. Perception: 
+
+*Question:* Does perception of aquaculture change when specifying seaweed aquaculture? 
+
+*Hypothesis:* Yes, perception of seaweed aquaculture will be more positive than aquaculture more broadly. 
+
+*Statistical Test:* Chi-square test of Q12 vs. Q13
+
+```{r}
+# Pull Q 12 and Q13 on perception of aquaculture and seaweed aquaculture, assign numerical value to categorical response
+perception_counts <- survey_data_tidy_sbv_filtered %>% 
+  select(question, answer) %>% 
+  filter(question == "q12" | 
+         question == "q13") %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  mutate_all(na_if,"")
+# get means
+perception_q12<- perception_counts %>% 
+  filter(question == "q12") %>% 
+  pull(number)
+perception_q13 <- perception_counts %>% 
+  filter(question == "q13") %>% 
+  pull(number)
+
+# Create a table with counts
+perception_counts_table <- perception_counts %>% 
+  tabyl(question, answer) %>% 
+  filter(question == "q12" | 
+         question == "q13") %>% 
+  select(-NA_)
+perception_counts_table
+# atleast 80% of cells <=5 is satisfied
+```
+
 ## Environmental Impacts
 
 ```{r}
