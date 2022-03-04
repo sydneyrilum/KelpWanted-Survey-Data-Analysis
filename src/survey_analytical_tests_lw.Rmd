@@ -350,6 +350,7 @@ perception_counts_table
 # atleast 80% of cells <=5 is satisfied
 ```
 
+
 ```{r}
 # Use `column_to_rownames` to convert counts table to a contingency table (makes `question` column entries into stored rownames)
 perception_ct <- perception_counts_table %>% 
