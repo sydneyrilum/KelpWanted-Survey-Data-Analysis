@@ -63,13 +63,13 @@ We test the relationship between people's familiarity with aquaculture and their
 #create subset from tidy filtered data
 #keep only question 10 and 13
 k_p <- survey_data_tidy_sbv_long_filtered %>% 
-  select(response_id, question, answer) %>% 
+  select(response_id, question, answer, weight) %>% 
   filter(question == "q10"|
            question == "q13") %>% 
 #switch to wide format with response id as the link
  spread(question, answer) %>% 
   mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
-  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it"))))
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it")))) 
 
 ggplot(k_p, aes(fill= q13, x = q10))+
   geom_bar(position = "dodge")+
@@ -82,6 +82,38 @@ ggplot(k_p, aes(fill= q13, x = q10))+
   
 #put counts into table format
 k_p_table<- k_p %>% 
+  tabyl(q10, q13) 
+```
+
+```{r 10v.13 dataframe, table and plot WEIGHTED}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+#switch to wide format with response id as the link
+  spread(question, answer) %>% 
+    mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it")))) %>%  
+  group_by(q13, q10) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  ungroup() %>% 
+  group_by(q10) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+##CHECK THESE RESULTS
+ggplot(k_p_weighted, aes(x = q10, y = weight_count))+
+  geom_bar(position = "dodge")+
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "count",
+       x = "Familiarity with Aquaculture")+
+  theme(legend.title = element_text("Perception of Seaweed Aquaculture")) +
+  theme_minimal()
+
+#put counts into table format
+k_p_table_weighted<- k_p_weighted %>% 
   tabyl(q10, q13) 
 ```
 
