@@ -240,10 +240,10 @@ ggplot(data = support_aq_stacked_bar_weighted,
 
 
 
-```{r non-weighted support/opposition combined categories}
+```{r weighted support/opposition combined categories}
 # alternative data frame
-support_aq_stacked_bar_2 <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
+support_aq_stacked_bar_2_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -259,34 +259,36 @@ support_aq_stacked_bar_2 <- survey_data_tidy_sbv_long_filtered %>%
     answer == "Neither opposed nor in support" ~ "Neither opposed nor in support",
     answer == "Somewhat supportive" ~ "Supportive",
     answer == "Strongly supportive" ~ "Supportive")) %>%
-  drop_na() %>% 
+  drop_na() %>%
   mutate(number = case_when( 
     answer == "Opposed" ~ 1,
     answer == "Neither opposed nor in support" ~ 2,
     answer == "Supportive" ~ 3)) %>%
-  group_by(question, answer, number) %>% 
-  summarize(count = n()) %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
   ungroup() %>% 
   group_by(question) %>% 
-  mutate(proportion = (count / sum(count)))
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 # Specify categorical order of questions and answers
-support_aq_stacked_bar_2$answer <- factor(support_aq_stacked_bar_2$answer, levels = c("Opposed", 
+support_aq_stacked_bar_2_weighted$answer <- factor(support_aq_stacked_bar_2_weighted$answer, levels = c("Opposed", 
                                                                                         "Neither opposed nor in support",
                                                                                         "Supportive"))
 # percent stacked barchart
-ggplot(data = support_aq_stacked_bar_2, 
+ggplot(data = support_aq_stacked_bar_2_weighted, 
        aes(fill = forcats::fct_rev(answer),
            y = proportion,
            x = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
   scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#FFFFBF","#FDAE61")) +
   labs(x = "",
        y = "",
        title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
-  theme_minimal() +
+  theme_classic() +
   theme(legend.title = element_blank(),
         legend.position = "right") #+
   #guides(color = guide_legend(reverse=TRUE),
@@ -439,6 +441,8 @@ ggplot(data = weighted_support_5col,
   theme_classic() +
   theme(legend.title = element_blank(),
         legend.position = "right") 
+
+#ggsave("weighted_support_5col.png", width = 8, height = 4)
 
 ```
 
@@ -726,10 +730,12 @@ ggplot(data = wording_exp_rank_2, aes(x = mean,
 # (Q10) - How familiar are you with aquaculture?
 
 familiarity <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
+  select(question, answer, weight) %>% 
   filter(question == "q10") %>% 
   group_by(answer) %>% 
-  summarize(count = n())
+  summarize(weight_count = round(sum(weight),)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count))) 
+
 
 # Specify categorical order of answers
 familiarity$answer <- factor(familiarity$answer, levels = c("Never heard of it",
@@ -737,13 +743,15 @@ familiarity$answer <- factor(familiarity$answer, levels = c("Never heard of it",
                                                             "Basic understanding",
                                                             "Very familiar"))
 
-ggplot(data = familiarity, aes(x = count,
+ggplot(data = familiarity, aes(x = proportion,
                                y = answer,
                                fill = answer)) +
   geom_bar(stat = "identity",
            fill = "lightsteelblue") + 
-  geom_text(aes(label = count), hjust = 1.5) +
-  labs(x = "count",
+  geom_text(aes(label = proportion), hjust = 1.5) +
+  scale_x_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  labs(x = "proportion",
        y = "",
        title = "How familiar are you with aquaculture?") +
   theme_minimal() +
@@ -797,7 +805,7 @@ ggplot(data = perception_aq_boxplot,
 
 ```
 
-```{r}
+```{r, unweighted perception}
 # alternative data frame
 perception_aq_stacked_bar <- survey_data_tidy_sbv_long_filtered %>% 
   select(question, answer) %>% 
@@ -871,6 +879,62 @@ perception_aq_stats <- survey_data_tidy_sbv_long_filtered %>%
             sd = sd(answer))
   
 ```
+
+```{r, WEIGHTED perception}
+# alternative data frame
+perception_aq_stacked_bar_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q12" | question == "q13") %>% 
+  mutate(question = case_when( 
+    question == "q12" ~ "aquaculture",
+    question == "q13" ~ "seaweed aquaculture")) %>% 
+  mutate(number = case_when( 
+    answer == "Very Negative" ~ 1,
+    answer == "Negative" ~ 2,
+    answer == "Neutral" ~ 3,
+    answer == "Positive" ~ 4,
+    answer == "Very Positive" ~ 5,
+    answer == "Unsure/Not familiar" ~ 6)) %>%
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  ungroup() %>% 
+  group_by(question) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+perception_aq_stacked_bar_weighted$answer <- factor(perception_aq_stacked_bar_weighted$answer, levels = c("Unsure/Not familiar", 
+                                                                                        "Very Negative", 
+                                                                                        "Negative",
+                                                                                        "Neutral",
+                                                                                        "Positive",
+                                                                                        "Very Positive"))
+perception_aq_stacked_bar_weighted$question <- factor(perception_aq_stacked_bar_weighted$question, levels = c("aquaculture",
+                                                                                            "seaweed aquaculture"))
+
+# percent stacked barchart
+ggplot(data = perception_aq_stacked_bar_weighted, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(x = "",
+       y = "",
+       title = "In general, how positive or negative is your view of ______ ?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right") #+
+  #guides(color = guide_legend(reverse=TRUE),
+  #       fill = guide_legend(nrow=1, byrow=TRUE))
+
+```
+
+
+
 
 ## Environmental Impacts
 

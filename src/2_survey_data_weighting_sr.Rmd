@@ -133,8 +133,11 @@ survey_data_tidy_sbv_long_filtered <- survey_data_tidy_sbv_filtered %>%
        value.name = "answer")
 ```
 
+
+## Export data frame as CSV
+
 ```{r}
-# export data frame as CSV
+
 write.csv(survey_data_tidy_sbv_filtered,
           file = here("data", "survey_data_tidy_sbv_filtered.csv"))
 
@@ -143,44 +146,43 @@ write.csv(survey_data_tidy_sbv_long_filtered,
 ```
 
 
-
-
-
-
-
 ## Data Viz
 
 ```{r}
-# Gender Identity (Q32)
-ggplot(data = survey_data_tidy_sbv_filtered, aes(x = q32)) +
-  geom_bar()
+weights_graph <- read.csv(here("data", "census", "population_sample_margin_weights.csv")) %>% 
+    filter(age_group != "0-4",
+           age_group != "5-9",
+           age_group != "10-14") %>% 
+  pivot_longer(cols = c(population_proportion, sample_proportion),
+               names_to = "type", values_to = "proportion") %>% 
+  mutate(type = case_when(
+    type == "population_proportion" ~ "Population",
+    type == "sample_proportion" ~ "Survey Sample"
+  ))
 
+ggplot(data = weights_graph, aes(x = age_group, y = proportion, fill = type)) +
+  geom_col(position = "dodge", width = 0.85) +
+  facet_wrap(~ sex, nrow = 2,) +
+  theme_gray() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.title = ) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9")) +
+  labs(x = "Age Group",
+       y = "Proportion",
+       title = "Population vs. Sample Demographics") +
+  theme(legend.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5),
+        panel.spacing = unit(1, "lines"),
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black"))
 
-gender_counts <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
-  filter(question == "q32") %>% 
-  group_by(answer) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-
-```
-
-
-```{r}
-# weighting the data by gender/sex (q32)
-
-# first remove 5 non-binary responses
-weighted <- survey_data_tidy_sbv_filtered %>% 
-  filter(q32 != "Non-binary")
+ggsave(filename = file.path(here("graphs","pop_sample_demographics.png")))
   
-ggplot(data = weighted, aes(x = q32)) +
-  geom_bar()
-
-weighted_gender_counts <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
-  filter(question == "q32") %>% 
-  filter(answer != "Non-binary") %>% 
-  group_by(answer) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
 ```
+
+
+
