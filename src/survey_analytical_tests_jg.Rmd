@@ -113,8 +113,11 @@ ggplot(k_p_weighted, aes(x = q10, y = weight_count))+
   theme_minimal()
 
 #put counts into table format
-k_p_table_weighted<- k_p_weighted %>% 
-  tabyl(q10, q13) 
+k_p_weight_table <- k_p_weighted %>% 
+  select(-proportion) %>% 
+  pivot_wider(names_from = q10, 
+              values_from = weight_count) %>% 
+    mutate_all(~replace(., is.na(.), 0))
 ```
 
 One key assumption of the chi-square test is that 80% of the cells must have an expected value of 5 or greater. Only 14 of the 24 cells meet this requirement (58%), therefore violating the assumptions of the chi-square test. We will use the maximum liklihood chi-square test to also understand the relationship bewteen the two variables. 
@@ -122,12 +125,12 @@ One key assumption of the chi-square test is that 80% of the cells must have an 
 
 ```{r 10 v. 13 chi squared test}
 # Use `column_to_rownames` to convert counts table to a contingency table (makes `q10` column entries into stored rownames)
-k_p_ct <- k_p_table %>% 
+k_p_ct_weight<- k_p_weight_table %>% 
   column_to_rownames(var = "q10")
 
 # Chi-square test for independence: Is there an association between support for aquaculture and word choice?
-knowledge_perception_x2 <- chisq.test(k_p_ct)
-knowledge_perception_x2
+knowledge_perception_weight_x2 <- chisq.test(k_p_ct_weight)
+knowledge_perception_weight_x2
 
 # Get the chi-square test results to call outputs in-line
 k_p_x2_tidy <- tidy(knowledge_perception_x2)
