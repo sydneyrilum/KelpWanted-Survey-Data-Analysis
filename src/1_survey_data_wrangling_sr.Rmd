@@ -117,7 +117,8 @@ Response Types Key:
 
 # 0 (speeders)
 response_0 <- survey_data_tidy %>% 
-  filter(response_type == 0)         # 15 speeders
+  mutate(duration_in_seconds = as.numeric(duration_in_seconds)) %>% 
+  filter(duration_in_seconds < 180)         # 33 speeders
   
 # 1 (completes)
 response_1 <- survey_data_tidy %>% 
@@ -146,9 +147,10 @@ response_3_incompletes <- survey_data_tidy %>%
 # Total number of responses (-speeders, -incompletes) = 460
 
 # Total number of SB/Ventura County responses = 400 
-# Total number of SBV responses (-speeders) = 389
+# Total number of SBV responses (-speeders) = 364
 response_sbv <- survey_data_tidy_sbv %>% 
-  filter(response_type != 0) 
+  mutate(duration_in_seconds = as.numeric(duration_in_seconds)) %>% 
+  filter(duration_in_seconds > 180) 
 
 ```
 

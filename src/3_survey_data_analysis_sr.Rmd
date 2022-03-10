@@ -220,22 +220,40 @@ support_aq_stacked_bar_weighted$answer <- factor(support_aq_stacked_bar_weighted
                                                                                         "Neither opposed nor in support",
                                                                                         "Somewhat supportive",
                                                                                         "Strongly supportive"))
+support_aq_stacked_bar_weighted$question <- factor(support_aq_stacked_bar_weighted$question, levels = c("kelp aquaculture",
+                                                                                                        "seaweed aquaculture",
+                                                                                                        "kelp farming",
+                                                                                                        "seaweed farming"))
+
 # percent stacked barchart
-ggplot(data = support_aq_stacked_bar_weighted, 
+support_aq_stacked_bar_weighted_graph <-
+  ggplot(data = support_aq_stacked_bar_weighted, 
        aes(fill = forcats::fct_rev(answer),
            y = proportion,
            x = question)) +
   geom_bar(position = "stack",
-           stat = "identity") +
-  scale_y_continuous(labels = scales::percent) +
+           stat = "identity",
+           width = 0.85) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   #scale_fill_manual(values =c("#2C7BB6","#2C7BB6","#FFFFBF","#FDAE61","#FDAE61")) +
   labs(x = "",
-       y = "",
-       title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
+       y = "proportion of responses") +
+       #title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
-        legend.position = "right") 
+        legend.position = "none",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black"),
+        panel.grid = element_line(color = "gray"))
+
+support_aq_stacked_bar_weighted_graph
+
+ggsave(filename = file.path(here("graphs","weighted_support_opposition_word_exp.png")),
+       width = 8, height = 4)
 ```
 
 
@@ -281,7 +299,6 @@ ggplot(data = support_aq_stacked_bar_2_weighted,
            x = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
-  scale_y_continuous(labels = scales::percent) +
   scale_y_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#FFFFBF","#FDAE61")) +
@@ -395,7 +412,8 @@ ggplot(data = combined_support_answers_weighted,
   geom_bar(position = "stack",
            stat = "identity",
            width = 0.5) +
-  scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
   #scale_fill_brewer(type = "div",
                     #palette = "RdYlGn",
                     #direction = -1) +
@@ -405,8 +423,14 @@ ggplot(data = combined_support_answers_weighted,
        title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
-        legend.position = "right") 
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black"),
+        panel.grid = element_line(color = "gray"))
 
+ggsave(filename = file.path(here("graphs","weighted_combined_support_opposition.png")))
 ```
 ```{r weighted combined 5 columns}
 
@@ -443,6 +467,86 @@ ggplot(data = weighted_support_5col,
         legend.position = "right") 
 
 #ggsave("weighted_support_5col.png", width = 8, height = 4)
+
+```
+
+```{r WEIGHTED & COMBINED 2 COLUMN support/opposition data}
+# Combine Q2&4 vs. Q6&8
+
+# Are you supportive of or opposed to expanding ______ off the California coast?
+# q2 - seaweed farming
+# q4 - kelp farming
+
+# q6 - seaweed aquaculture
+# q8 - kelp aquaculture
+
+combined_support_answers_weighted_2col <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "farming",
+    question == "q4" ~ "farming",
+    question == "q6" ~ "aquaculture",
+    question == "q8" ~ "aquaculture")) %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+combined_support_answers_weighted_2col$answer <- factor(combined_support_answers_weighted_2col$answer, levels = c("Strongly opposed", 
+                                                                                        "Somewhat opposed", 
+                                                                                        "Neither opposed nor in support",
+                                                                                        "Somewhat supportive",
+                                                                                        "Strongly supportive"))
+
+# percent stacked barchart
+combined_support_answers_weighted_2col_graph <- 
+  ggplot(data = combined_support_answers_weighted_2col, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.75) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "") +
+       #title = "Influence of Terminology on Support") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 12),
+        panel.grid = element_line(color = "gray"),
+        plot.title = element_text(hjust = 0.5))
+
+combined_support_answers_weighted_2col_graph
+
+ggsave(filename = file.path(here("graphs","weighted_combined_support_opposition_2col.png")))
+```
+
+```{r, support/opposition PATCHWORK}
+# stack  plots using `patchwork` 
+support_aq_stacked_bar_weighted_graph + plot_spacer() + combined_support_answers_weighted_2col_graph +
+  plot_annotation(title = "Influence of Terminology on Support", tag_levels = "A") +
+  theme(plot.title = element_text(size = 15)) +
+  plot_layout(widths = c(5, 0.01, 3))
+
+ggsave(filename = file.path(here("graphs","influence_terms_on_support_PATCHWORK.png")),
+       width = 10, height = 6)
 
 ```
 
@@ -622,7 +726,7 @@ wordclouds +
 
 ### Ranking terms by positivity 
 
-```{r}
+```{r, unweighted ranked terms}
 # Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
 
 # q11_1 - ocean farming
@@ -665,7 +769,7 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 ```
 
-```{r}
+```{r, weighted ranked terms}
 # Q11_1 - Q11_8 (Aquaculture is referred to by many names. Please rank the following names based on which you view most positively, with 1 being most positive.)
 
 # q11_1 - ocean farming
@@ -680,8 +784,7 @@ ggplot(data = wording_exp_rank, aes(x = term, y = V1)) +
 
 # make new subset of data USING SBV data ONLY
 wording_exp_rank_2 <- survey_data_tidy_sbv_long_filtered %>% 
-  select(question, answer) %>% 
-  mutate_if(is.character,as.numeric) %>% 
+  select(question, answer, weight) %>% 
   filter(question == "q11_1"|
            question == "q11_2"|
            question == "q11_3"|
@@ -700,10 +803,14 @@ wording_exp_rank_2 <- survey_data_tidy_sbv_long_filtered %>%
     question == "q11_7" ~ "regenerative aquaculture",
     question == "q11_8" ~ "seaweed mariculture")) %>% 
   drop_na() %>% 
-  group_by(question) %>% 
-  summarize(mean = round(mean(answer, na.rm = TRUE),2), # calculate mean rank score for each answer choice
-            sd = round(sd(answer, na.rm = TRUE),2)) %>% 
-  mutate(question = fct_reorder(question, mean, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
+  mutate(weight = as.numeric(weight)) %>% 
+  group_by(question) #%>%
+  #summarize(mean = sum(weight, na.rm = TRUE))
+
+
+ # summarize(mean = round(mean(weight, na.rm = TRUE),2), # calculate mean rank score for each answer choice
+ #           sd = round(sd(weight, na.rm = TRUE),2)) %>% 
+ # mutate(question = fct_reorder(question, mean, .desc = TRUE))  # order topics by count, smallest (most interested) to largest (least interested)
 
 
 ggplot(data = wording_exp_rank_2, aes(x = mean, 
@@ -748,7 +855,7 @@ ggplot(data = familiarity, aes(x = proportion,
                                fill = answer)) +
   geom_bar(stat = "identity",
            fill = "lightsteelblue") + 
-  geom_text(aes(label = proportion), hjust = 1.5) +
+  #geom_text(aes(label = proportion), hjust = 1.5) +
   scale_x_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0))) +
   labs(x = "proportion",
@@ -756,9 +863,14 @@ ggplot(data = familiarity, aes(x = proportion,
        title = "How familiar are you with aquaculture?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
-        legend.position = "none") 
-  
-#ggsave("familiarity.png")
+        legend.position = "none",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black"),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","weighted_familiarity.png")))
 ```
 
 
@@ -920,16 +1032,22 @@ ggplot(data = perception_aq_stacked_bar_weighted,
            x = question)) +
   geom_bar(position = "stack",
            stat = "identity") +
-  scale_y_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
   labs(x = "",
        y = "",
        title = "In general, how positive or negative is your view of ______ ?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
-        legend.position = "right") #+
-  #guides(color = guide_legend(reverse=TRUE),
-  #       fill = guide_legend(nrow=1, byrow=TRUE))
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black"),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","weighted_perception.png")))
 
 ```
 
