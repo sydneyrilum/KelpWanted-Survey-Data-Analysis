@@ -15,6 +15,9 @@ library(kableExtra)
 library(data.table)  # advanced pivot_table tools
 library(naniar)      # replace NA tools
 library(zipcodeR)    # for zipcode assignment by county
+library(RColorBrewer)
+library(lattice)     # for heatmaps
+#library(MASS)        # for polr function (used in ordered logistic regression)
 #library(raster)      # for mapping raster layers
 #library(dplyr)       # needed ONLY if working on a windows computer
 ```
@@ -565,13 +568,134 @@ ordinal_log_reg_table<- ordinal_log_reg %>%
 
 
 
-# 5. Knowledge: 
+# 5. Knowledge/Familiarity: 
 
-*Questions:* Are residents familiar with kelp aquaculture? 
+*Question:* Does familiarity with aquaculture influence their perception of aquaculture? 
 
-*Hypothesis:* The majority of the public have not been exposed to the idea of seaweed aquaculture.
+*Null Hypothesis (H0):*  There is no association between the two variables (familiarity and perceptions) i.e. they are independent 
 
-*Statistical Tests:* Chi-square test Q10 & Mann-Whitney U on Q16, Q17 
+*Statistical Test:* Chi-square test of Q10 & Q13
+
+*Test Statistic:* P-value > 0.05 
+
+
+#### Q10 (familiarity) v. Q13 (perception of seaweed aq)
+
+```{r 10v.13 dataframe, table and plot WEIGHTED}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+  #switch to wide format with response id as the link
+  spread(question, answer) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it")))) %>%  
+  group_by(q13, q10) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+## graph
+ggplot(k_p_weighted, aes(fill= q13, x = q10, y = weight_count))+
+  geom_col(position = position_dodge2(preserve = "single")) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(expand = expansion(mult = c(0.005, 0))) +
+  scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
+  labs(y = "Count",
+       x = "Familiarity with Aquaculture",
+       title = "Relationship Between Familiarity and Perception",
+       fill = "Perception of \nSeaweed Aquaculture") + 
+  theme_minimal() +
+  theme(axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black"),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black")) 
+
+
+ggsave(filename = file.path(here("graphs","familiarity_&_perception.png")))
+```
+
+
+One key assumption of the chi-square test is that 80% of the cells must have an expected value of 5 or greater. Only 14 of the 24 cells meet this requirement (58%), therefore violating the assumptions of the chi-square test. We will use the maximum liklihood chi-square test to also understand the relationship between the two variables. 
+
+```{r 10 v. 13 chi squared test, violates assumptions!!!}
+#put counts into table format
+k_p_ct_table <- k_p_weighted %>% 
+  select(-proportion) %>% 
+  pivot_wider(names_from = q10, 
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q13")
+
+# Chi-square test for independence: Is there an association between familiarity and perception?
+knowledge_perception_weight_x2 <- chisq.test(k_p_ct_table)
+knowledge_perception_weight_x2
+
+# Get the chi-square test results to call outputs in-line
+k_p_x2_tidy <- tidy(knowledge_perception_weight_x2)
+```
+
+
+The p-squared value `r round(k_p_x2_tidy[1, 2], 2)` is less than alpha (0.05) indicating the null hypothesis- that the two variables are independent- failed. However, there were some counts that were less than 5 which indicates there should be additional study. Thus, the data violates an assumption of the chi-square test so we conduct the maximum likelihood test below. 
+
+We will aggregate 'very negative' and 'negative' and 'very positive' and 'postiive' and run the chi-square with these groups. 
+
+```{r group Q13 responses, to meet chi-square assumption}
+#create subset from tidy filtered data
+#keep only question 10 and 13
+k_p_grouped_weighted <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q10"|
+           question == "q13") %>% 
+ #switch to wide format with response id as the link
+  spread(question, answer) %>% 
+ #group responses
+  mutate(q13= case_when(
+    q13 == "Very Negative" ~ "Negative",
+    q13 == "Negative" ~ "Negative",
+    q13 =="Neutral" ~ "Neutral",
+    q13 == "Positive" ~ "Positive",
+    q13 =="Very Positive" ~ "Positive",
+    q13 =="Unsure/Not familiar" ~ "Unsure/Not familiar")) %>% 
+  mutate(q13 = fct_relevel(q13, c(c("Negative","Neutral","Positive", "Unsure/Not familiar")))) %>% 
+  mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it")))) %>%  
+  group_by(q13, q10) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+k_p_ct_table_grouped <- k_p_grouped_weighted %>% 
+  select(-proportion) %>% 
+  pivot_wider(names_from = q10, 
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q13")
+
+# Chi-square test for independence: Is there an association between familiarity and perception?
+knowledge_perception_grouped_x2 <- chisq.test(k_p_ct_table_grouped)
+knowledge_perception_grouped_x2
+
+
+# Get the chi-square test results to call outputs in-line
+k_p_x2_tidy <- tidy(knowledge_perception_grouped_x2)
+```
+
+
+When perception is combined into 'negative', 'neutral', 'positive', and 'unsure', the null hypothesis is rejected (p-value= 2.22 x10-7, alpha =0.05) which indicates the variables are dependent. 
+
+We can also use the Fisher's exact test to calculate the exact p-value. **Fisher's test requires a high number of simulations because the value of p is so small. Kept crashing R**
+
+```{r 10 v. 13 Fischer's exact test}
+#fisher.test(k_p_ct, workspace = 2e7)
+```
+
+
+
+
+
+
+
+
 
 
 
@@ -625,6 +749,480 @@ ordinal_log_reg_2_table<- ordinal_log_reg_2 %>%
   column_to_rownames(var = "q2")
 ```
 
+
+
+
+
+
+
+
+## Regression Models 
+
+####Relationship Between perception and support
+
+*Question:* Is support related to more postie perceptions of seaweed aquaculture?
+
+*Hypothesis:* Those who view seaweed aquaculture more positively will be more likely to be in support of seaweed aquaculture expansion.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordered logistic regression (OLR) of perception combined support values (Q2,4,6,8) vs. perception of seaweed aquaculture (Q13)
+
+dependent variable = support (Q2)
+independent variable = perception (Q13)
+
+
+```{r regression table }
+# create data frame with Q2 and Q13 
+
+OLR_perception_support_data <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2",
+    question == "q13" ~ "q13")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# use spread() to pivot table to wide format
+OLR_perception_support <- OLR_perception_support_data %>% 
+  spread(question, answer) %>% 
+  filter(q13 != "NA")  %>% # remove incomplete responses
+  filter(q2 != "NA") # remove incomplete responses
+  
+OLR_perception_support_table <- OLR_perception_support %>% 
+  tabyl(q2, q13) %>% 
+  column_to_rownames(var = "q2")
+
+summary(OLR_perception_support_table)
+
+```
+
+## repeat but with grouped support for aquaculture and farming
+
+```{r regression table}
+# create data frame with Q2 x2  and Q13 
+
+OLR_perception_support_data <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "aquaculture",
+    question == "q4" ~ "aquaculture",
+    question == "q6" ~ "farming",
+    question == "q8" ~ "farming",
+    question == "q13" ~ "perception")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# aquaculture vs. perception
+# make dataframe one for each regression
+perception_support_aquaculture <- OLR_perception_support_data %>% 
+  spread(question, answer) %>% 
+  select(aquaculture, perception, weight) %>% 
+  filter(perception != "NA",
+         aquaculture != "NA") # remove incomplete responses
+
+# make contingency table
+perception_support_aquaculture_table <- perception_support_aquaculture %>% 
+  group_by(aquaculture, perception) %>% 
+  summarize(weight_count = round(sum(weight),0)) %>% 
+  pivot_wider(names_from = perception,
+              values_from = weight_count) %>% 
+  column_to_rownames(var = "aquaculture") %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+summary(perception_support_aquaculture_table)
+
+# repeat for farming vs. perception
+perception_support_farming <- OLR_perception_support_data %>% 
+  spread(question, answer) %>% 
+  select(farming, perception, weight) %>% 
+  filter(perception != "NA",
+         farming != "NA") # remove incomplete responses
+
+perception_support_farming_table <- perception_support_farming %>% 
+  group_by(farming, perception) %>% 
+  summarize(weight_count = round(sum(weight),0)) %>% 
+  pivot_wider(names_from = perception,
+              values_from = weight_count) %>% 
+  column_to_rownames(var = "farming") %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+summary(perception_support_farming_table)
+```
+
+```{r create ordinal logistic model}
+library(MASS)
+#use polr to create a logit model to understand how familiarity influences expansion
+m1 <- polr(factor(aquaculture) ~ perception, data = perception_support_aquaculture, Hess =TRUE)
+summary(m1)
+
+m2 <- polr(factor(farming) ~ perception, data = perception_support_farming, Hess =TRUE)
+summary(m2)
+```
+
+the q13 coefficient value represents the eta so as eta gets bigger then zeta gets smaller. 
+
+Intercepts are the zeta values. 
+
+```{r understand odds ratio}
+#interpret odds ratio to probabilities. Outside parenthesis are important 
+(ci1 <- confint(m1))
+exp(cbind(coef(m1), t(ci1)))
+
+(ci2 <- confint(m2))
+exp(cbind(coef(m2), t(ci2)))
+```
+
+
+```{r predicted probabilities to understand odds ratio}
+newdf_1 <- data.frame(perception =c(-2,-1,0,1,2))
+(phat1 <- predict(object = m1, newdf_1, type = "p"))
+
+newdf_2 <- data.frame(perception =c(-2,-1,0,1,2))
+(phat2 <- predict(object = m2, newdf_2, type = "p"))
+
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
+
+# heatmap plots
+levelplot(phat1, col.regions= coul,
+          xlab = "perception",
+          ylab = "support aquaculture",
+          main = "Predicted Probabilities",
+          at = seq(min(0), max(1), length.out=20)) # make scale 0 to 1
+
+levelplot(phat2, col.regions= coul,
+          xlab = "perception",
+          ylab = "support farming",
+          main = "Predicted Probabilities",
+          at = seq(min(0), max(1), length.out=20))
+
+phat1 %>% 
+  t() %>% 
+  kable(#align = c("c", "c", "c", "c", "c"),
+        row.names = TRUE,
+        digits = 2,
+        caption = "Predicted Probabilities of Support for Aquaculture as a Function of Perception") %>%
+  #row_spec(0, align = "c") %>%
+  kable_classic(full_width = T) %>%
+  kable_styling(bootstrap_options = "striped")
+
+phat2 %>% 
+  t() %>% 
+  kable(#align = c("c", "c", "c", "c", "c"),
+        row.names = TRUE,
+        digits = 2,
+        caption = "Predicted Probabilities of Support for Farming as a Function of Perception") %>%
+  #row_spec(0, align = "c") %>%
+  kable_classic(full_width = T) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+# unload MASS package, to remove conflicts with "dplyr::select" function
+detach("package:MASS", unload=TRUE)
+```
+
+
+####Relationship Between Familiarity and Support: 
+
+
+*Question:* Does familiarity with seaweed aquaculture depend on whether or not one is in support of aquaculture?
+
+*Hypothesis:* Yes, supporters will be more familiar with seaweed aquaculture.
+
+*Assumptions:* 
+- Since Q2,4, 6, 8 are not significantly different, then questions/answers can thus be combined.
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of perception combined support values (Q2,4,6,8) vs. perception value from Q13 (seaweed aquaculture)
+
+
+dependent variable = support (Q2)
+independent variable = familiarity (Q10)
+
+
+```{r regression table }
+# create data frame with Q2 x 2 and Q10
+
+OLR_familiarity_support_data <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8" |
+         question == "q10") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "aquaculture",
+    question == "q4" ~ "aquaculture",
+    question == "q6" ~ "farming",
+    question == "q8" ~ "farming",
+    question == "q10" ~ "familiarity")) %>% 
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~ -2,
+    answer == "Somewhat opposed" ~ -1,
+    answer == "Neither opposed nor in support" ~ 0,
+    answer == "Somewhat supportive" ~ 1,
+    answer == "Strongly supportive" ~ 2,
+    answer == "Very familiar" ~ 4,
+    answer == "Basic understanding" ~ 3,
+    answer == "Heard of it, but don't know details" ~ 2,
+    answer == "Never heard of it" ~ 1)) %>%
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# aquaculture vs. familiarity
+# make dataframe one for each regression
+familiarity_support_aquaculture <- OLR_familiarity_support_data %>% 
+  spread(question, answer) %>%  # use spread() to pivot table to wide format
+  select(aquaculture, familiarity, weight) %>% 
+  filter(familiarity != "NA",
+         aquaculture != "NA") # remove incomplete responses
+
+# make contingency table
+familiarity_support_aquaculture_table <- familiarity_support_aquaculture %>% 
+  group_by(aquaculture, familiarity) %>% 
+  summarize(weight_count = round(sum(weight),0)) %>% 
+  pivot_wider(names_from = familiarity,
+              values_from = weight_count) %>% 
+  column_to_rownames(var = "aquaculture") %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+summary(familiarity_support_aquaculture_table)
+
+# repeat for farming vs. perception
+familiarity_support_farming <- OLR_familiarity_support_data %>% 
+  spread(question, answer) %>% 
+  select(farming, familiarity, weight) %>% 
+  filter(familiarity != "NA",
+         farming != "NA") # remove incomplete responses
+
+familiarity_support_farming_table <- familiarity_support_farming %>% 
+  group_by(farming, familiarity) %>% 
+  summarize(weight_count = round(sum(weight),0)) %>% 
+  pivot_wider(names_from = familiarity,
+              values_from = weight_count) %>% 
+  column_to_rownames(var = "farming") %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+summary(familiarity_support_farming_table)
+```
+
+```{r create ordinal logistic model}
+library(MASS)
+#use polr to create a logit model to understand how familiarity influences expansion
+m3 <- polr(factor(aquaculture) ~ familiarity, data = familiarity_support_aquaculture, Hess =TRUE)
+summary(m3)
+
+m4 <- polr(factor(farming) ~ familiarity, data = familiarity_support_farming, Hess =TRUE)
+summary(m4)
+```
+
+```{r understand odds ratio}
+#interpret odds ratio to probabilities. Outside parenthesis are important 
+(ci3 <- confint(m3))
+exp(cbind(coef(m3), t(ci3)))
+
+(ci4 <- confint(m4))
+exp(cbind(coef(m4), t(ci4)))
+```
+
+```{r predicted probabilities to understand odds ratio}
+newdf_3 <- data.frame(familiarity =c(1,2,3,4))
+(phat3 <- predict(object = m3, newdf_3, type = "p"))
+
+newdf_4 <- data.frame(familiarity =c(1,2,3,4))
+(phat4 <- predict(object = m4, newdf_4, type = "p"))
+
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
+
+# heatmap plots
+levelplot(phat3, col.regions= coul,
+          xlab = "familiarity",
+          ylab = "support aquaculture",
+          main = "Predicted Probabilities",
+          at = seq(min(0), max(1), length.out=20))
+
+levelplot(phat4, col.regions= coul,
+          xlab = "familiarity",
+          ylab = "support farming",
+          main = "Predicted Probabilities",
+          at = seq(min(0), max(1), length.out=20))
+
+phat3 %>% 
+  t() %>% 
+  kable(#align = c("c", "c", "c", "c"),
+        row.names = TRUE,
+        digits = 2,
+        caption = "Predicted Probabilities of Support for Aquaculture as a Function of Familiarity") %>%
+  #row_spec(0, align = "c") %>%
+  kable_classic(full_width = T) %>%
+  kable_styling(bootstrap_options = "striped")
+
+phat4 %>% 
+  t() %>% 
+  kable(#align = c("c", "c", "c", "c"),
+        row.names = TRUE,
+        digits = 2,
+        caption = "Predicted Probabilities of Support for Farming as a Function of Familiarity") %>%
+  #row_spec(0, align = "c") %>%
+  kable_classic(full_width = T) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+
+```{r}
+# unload MASS package, to remove conflicts with "dplyr::select" function
+detach("package:MASS", unload=TRUE)
+```
+
+
+####Relationship Between Perception and Familiarity: 
+
+*Question:* Is perception related to familiarity with seaweed aquaculture?
+
+*Hypothesis:* 
+
+*Assumptions:* 
+- Remove "don't know" answer choice counts
+
+*Statistical Test:* Ordinal logistic regression of 
+
+
+dependent variable = perception (q13)
+independent variable = familiarity (Q10)
+
+
+```{r regression table }
+# create data frame with Q10 and Q13
+
+OLR_perception_familiarity_data <- survey_data_tidy_sbv_long_filtered %>% 
+  select(response_id, question, answer, weight) %>% 
+  filter(question == "q10" | 
+         question == "q13") %>%
+  mutate(question = case_when( 
+    question == "q13" ~ "perception",
+    question == "q10" ~ "familiarity")) %>% 
+  mutate(answer = case_when( 
+    answer == "Very familiar" ~ 4,
+    answer == "Basic understanding" ~ 3,
+    answer == "Heard of it, but don't know details" ~ 2,
+    answer == "Never heard of it" ~ 1,
+    answer == "Very Positive" ~ 2,
+    answer == "Positive" ~ 1,
+    answer == "Neutral" ~ 0,
+    answer == "Negative" ~ -1,
+    answer == "Very Negative" ~ -2,
+    answer == "Unsure/Not familiar" ~ -999)) %>%
+  replace_with_na(replace = list(answer = -999))%>% 
+  filter(answer != "NA") # remove incomplete responses
+
+```
+
+```{r}
+# make dataframe for regression perception vs. familiarity
+OLR_perception_familiarity <- OLR_perception_familiarity_data %>%
+  spread(question, answer) %>%  # use spread() to pivot table to wide format
+  select(perception, familiarity, weight) %>% 
+  filter(familiarity != "NA",
+         perception != "NA") # remove incomplete responses
+  
+# make contingency table
+OLR_perception_familiarity_table <- OLR_perception_familiarity %>% 
+  group_by(perception, familiarity) %>% 
+  summarize(weight_count = round(sum(weight),0)) %>% 
+  pivot_wider(names_from = familiarity,
+              values_from = weight_count) %>% 
+  column_to_rownames(var = "perception") %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+summary(OLR_perception_familiarity_table)
+```
+
+
+```{r create ordinal logistic model}
+library(MASS)
+#use polr to create a logit model to understand how familiarity influences expansion
+m5 <- polr(factor(perception) ~ familiarity, data = OLR_perception_familiarity, Hess =TRUE)
+summary(m5)
+```
+
+```{r understand odds ratio}
+#interpret odds ratio. Outside parenthesis are important 
+(ci5 <- confint(m5))
+exp(cbind(coef(m5), t(ci5)))
+```
+
+```{r predicted probabilities to understand odds ratio}
+newdf5 <- data.frame(familiarity =c(1, 2, 3, 4))
+(phat5 <- predict(object = m5, newdf5, type = "p"))
+
+#coul is the color palette
+coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
+
+#heatmap
+levelplot(phat5, col.regions= coul,
+          xlab = "familiarity",
+          ylab = "perception",
+          main = "Predicted Probabilities",
+          at = seq(min(0), max(1), length.out=20)) 
+
+phat5 %>% 
+  t() %>% 
+  kable(#align = c("c", "c", "c", "c"),
+        row.names = TRUE,
+        digits = 2,
+        caption = "Predicted Probabilities of Perception as a Function of Familiarity") %>%
+  #row_spec(0, align = "c") %>%
+  kable_classic(full_width = T) %>%
+  kable_styling(bootstrap_options = "striped")
+```
 
 
 
