@@ -902,7 +902,7 @@ m1 <- polr(factor(aquaculture) ~ perception, data = perception_support_aquacultu
 summary(m1)
 
 m2 <- polr(factor(farming) ~ perception, data = perception_support_farming, Hess =TRUE)
-summary(m2)
+summary(m2) 
 ```
 
 the q13 coefficient value represents the eta so as eta gets bigger then zeta gets smaller. 

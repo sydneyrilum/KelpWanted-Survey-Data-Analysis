@@ -857,20 +857,23 @@ ggplot(data = familiarity, aes(x = proportion,
                                y = answer,
                                fill = answer)) +
   geom_bar(stat = "identity",
-           fill = "lightsteelblue") + 
+           fill = "#ABD9E9") + 
+  #"#2C7BB6","#ABD9E9"
   #geom_text(aes(label = proportion), hjust = 1.5) +
   scale_x_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0))) +
-  labs(x = "proportion",
+  scale_y_discrete(labels= function(y)str_wrap(y, width = 12)) +
+  labs(x = "proportion of responses",
        y = "",
        title = "How familiar are you with aquaculture?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "none",
         axis.line.y = element_line(color = "black", size = 0.5),
-        axis.text.y = element_text(color = "black"),
+        axis.text.y = element_text(color = "black", size = 12),
+        axis.title.x = element_text(color = "black", size = 12),
         axis.line.x = element_line(color = "black", size = 0.5),
-        axis.text.x = element_text(color = "black"),
+        axis.text.x = element_text(color = "black", size = 12),
         panel.grid = element_line(color = "gray"))
 
 ggsave(filename = file.path(here("graphs","weighted_familiarity.png")))
@@ -1507,6 +1510,18 @@ ggplot(data = graph_2,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 ## Demographics 
 
 ```{r}
@@ -1542,13 +1557,12 @@ ggplot(data = survey_data_tidy, aes(y = q38)) +
 ```
 
 
-```{r}
-# demographic analysis for Qualtrics survey
+# Demographic Analysis for Qualtrics survey (350 weighted responses)
 
+## Political Affiliation
+```{r}
 # split up support/opposed responses by political affiliation
 polit_affil <- survey_data_tidy_sbv_long_filtered %>% 
-  filter(response_type != 3) %>% 
-  filter(q32 != "Non-binary") %>% 
   filter(question == "q2" | 
          question == "q4" |
          question == "q6" |
@@ -1558,13 +1572,429 @@ polit_affil <- survey_data_tidy_sbv_long_filtered %>%
     question == "q4" ~ "q2",
     question == "q6" ~ "q2",
     question == "q8" ~ "q2")) %>% 
+  select("question", "q38", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  #drop_na() %>% 
+  group_by(q38, answer) %>% 
+  #summarize(count = n()) %>% 
+  #mutate(proportion = (count / sum(count)))
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+polit_affil$answer <- factor(polit_affil$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = polit_affil, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q38)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  #scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
+  #scale_fill_brewer(type = "div",
+                    #palette = "RdYlGn",
+                    #direction = -1) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between political affiliation and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_polit_affil.png")))
+```
+## Sex
+```{r}
+# split up support/opposed responses by sex
+sex <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  mutate(q32 = case_when( 
+    q32 == "Man" ~ "Male",
+    q32 == "Woman" ~ "Female")) %>% 
+  select("question", "q32", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  #drop_na() %>% 
+  group_by(q32, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+sex$answer <- factor(sex$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = sex, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q32)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  #scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between sex and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_sex.png")))
+```
+
+
+## Education
+```{r}
+# split up support/opposed responses by education
+education <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "q34", "answer", "weight") %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
-  group_by(q38, answer) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
+  group_by(q34, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 
+# Specify categorical order of questions and answers
+education$answer <- factor(education$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+education$q34 <- factor(education$q34, levels = c("Some High School", "High School or equivalent GED", "Technical or occupational certificate", "Some college coursework completed", "Associate degree","Bachelor's degree","Master's degree", "PhD"))
+
+# percent stacked barchart
+ggplot(data = education, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q34)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 24)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between education and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_education.png")))
+```
+
+
+## Income
+```{r}
+# split up support/opposed responses by income
+income <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "q35", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(q35, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+income$answer <- factor(income$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+income$q35 <- factor(income$q35, levels = c("< $25K", "$25K - $50K", "$50K - $75K","$75K - $100K","$100K - $125K", "$125K - $150K", "> $150K", "Prefer not to state"))
+
+# percent stacked barchart
+ggplot(data = income, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q35)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between income and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_income.png")))
+```
+
+
+## Relationship to Aquaculture Industry
+```{r}
+# split up support/opposed responses by relation to aquaculture industry
+aq_industry <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "q40", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  drop_na() %>%
+  separate(col = "q40", sep = ",", into = c("q40_1","q40_2","q40_3")) %>% 
+  group_by(q40_1, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+aq_industry$answer <- factor(aq_industry$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+aq_industry$q40_1 <- factor(aq_industry$q40_1, levels = c("Employee", "Supplier", "Customer", "Competitor", "Government/Regulator", "Researcher", "Shareholder", "Other", "None"))
+
+# percent stacked barchart
+ggplot(data = aq_industry, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q40_1)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relation to aquaculture industry and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_aq_industry.png")))
+```
+
+## County
+```{r}
+# split up support/opposed responses by county
+county <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "county", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(county, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+# Specify categorical order of questions and answers
+county$answer <- factor(county$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = county, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = county)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between county and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_county.png")))
+```
+
+
+## Age
+```{r}
+# split up support/opposed responses by age
+age <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "age_group", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  group_by(age_group, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+age$answer <- factor(age$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+# percent stacked barchart
+ggplot(data = age, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = age_group)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between age and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_age.png")))
+```
+
+## Occupation Sector
+```{r}
+# split up support/opposed responses by occupation sector
+occupation <- survey_data_tidy_sbv_long_filtered %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  select("question", "q39", "answer", "weight") %>% 
+  filter(answer != "") %>% 
+  drop_na() %>% 
+  separate(col = "q39", sep = ",", into = c("q39_1","q39_2","q39_3")) %>% 
+  group_by(q39_1, answer) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+occupation$answer <- factor(occupation$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
+
+occupation$q39_1 <- factor(occupation$q39_1, levels = c("government", "non-profit", "education","commercial fisher","healthcare", "service industry", "other"))
+
+# percent stacked barchart
+ggplot(data = occupation, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = q39_1)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
+  labs(x = "",
+       y = "proportion of responses",
+       title = "Relationship between occupation sector and support of seaweed aquaculture") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","demo_occupation_sector.png")))
+```
+
+
+
+
+```{r}
 # mean/sd ######## HELP NOT WORKING, can't calc mean
 polit_affil_mean <- survey_data_tidy_sbv_long_filtered %>% 
   filter(response_type != 3) %>% 
@@ -1592,83 +2022,6 @@ polit_affil_mean <- survey_data_tidy_sbv_long_filtered %>%
   mutate(proportion = (count / sum(count)),
          mean = mean(count/sum(count)),
          sd = sd(number))
-
-# Specify categorical order of questions and answers
-polit_affil$answer <- factor(polit_affil$answer, levels = c("Strongly opposed", 
-                                                                                        "Somewhat opposed", 
-                                                                                        "Neither opposed nor in support",
-                                                                                        "Somewhat supportive",
-                                                                                        "Strongly supportive"))
-
-# percent stacked barchart
-ggplot(data = polit_affil, 
-       aes(fill = forcats::fct_rev(answer),
-           y = proportion,
-           x = q38)) +
-  geom_bar(position = "stack",
-           stat = "identity",
-           width = 0.5) +
-  scale_y_continuous(labels = scales::percent) +
-  #scale_fill_brewer(type = "div",
-                    #palette = "RdYlGn",
-                    #direction = -1) +
-  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
-  labs(x = "",
-       y = "",
-       title = "Relationship between political affiliation and support of seaweed aquaculture") +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = "right") 
-  
-```
-
-```{r}
-# demographic analysis for self-collected
-
-# split up support/opposed responses by county
-sbv_residents_qrcode <- survey_data_tidy_sbv_long_filtered %>% 
-  filter(response_type == 3) %>% 
-  filter(question == "q2" | 
-         question == "q4" |
-         question == "q6" |
-         question == "q8") %>%
-  mutate(question = case_when( 
-    question == "q2" ~ "q2",
-    question == "q4" ~ "q2",
-    question == "q6" ~ "q2",
-    question == "q8" ~ "q2")) %>% 
-  filter(answer != "") %>% 
-  drop_na() %>% 
-  group_by(county, answer) %>% 
-  summarize(count = n()) %>% 
-  mutate(proportion = (count / sum(count)))
-
-# Specify categorical order of questions and answers
-sbv_residents_qrcode$answer <- factor(sbv_residents_qrcode$answer, levels = c("Strongly opposed", 
-                                                                                        "Somewhat opposed", 
-                                                                                        "Neither opposed nor in support",
-                                                                                        "Somewhat supportive",
-                                                                                        "Strongly supportive"))
-
-# percent stacked barchart
-ggplot(data = sbv_residents_qrcode, 
-       aes(fill = forcats::fct_rev(answer),
-           y = proportion,
-           x = county)) +
-  geom_bar(position = "stack",
-           stat = "identity",
-           width = 0.5) +
-  scale_y_continuous(labels = scales::percent) +
-  #scale_fill_brewer(type = "div",
-                    #palette = "RdYlGn",
-                    #direction = -1) +
-  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
-  labs(x = "",
-       y = "",
-       title = "Are you supportive of or opposed to expanding \nseaweed aquaculture off the California coast?") +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = "right") 
 ```
 
 
