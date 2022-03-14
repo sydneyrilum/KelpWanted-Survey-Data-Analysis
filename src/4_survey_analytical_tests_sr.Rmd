@@ -1225,4 +1225,250 @@ phat5 %>%
 ```
 
 
+## Demogrphic Analyses - Association with Support for Seaweed Aquaculture
+
+### chi-square test for association between COUNTY of residence and support for seaweed aquaculture
+
+```{r}
+# split up support/opposed responses by county
+county_x2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight, county) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  mutate_all(na_if,"") %>% 
+  drop_na() %>% 
+  group_by(county, answer) %>% 
+  summarize(weight_count = round(sum(weight)),) 
+
+county_x2_table <- county_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "county")
+```
+
+```{r}
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+county_x2_result <- chisq.test(county_x2_table)
+county_x2_result
+
+# Get the chi-square test results to call outputs in-line
+county_x2_results_tidy <- tidy(county_x2_result)
+
+#fisher.test(county_x2_table)
+```
+
+### fisher's exact test for association between AGE of residence and support for seaweed aquaculture
+
+data did not meet assumptions for chi-square test, even when support categories were combined.
+therefore, a fisher's exact test was used instead.
+
+```{r}
+# split up support/opposed responses by county
+age_x2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, age_group, weight) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  mutate_all(na_if,"") %>% 
+  drop_na() %>% 
+  group_by(age_group, answer) %>% 
+  summarize(weight_count = round(sum(weight)),) 
+
+age_x2_table <- age_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "age_group")
+```
+
+```{r}
+# fisher's exact test for independence: Is there an association between support for aquaculture and word choice?
+fisher.test(age_x2_table, simulate.p.value=TRUE)
+```
+
+
+### fisher's exact for association between EDUCATION and support for seaweed aquaculture
+
+data did not meet assumptions for chi-square test, even when support categories were combined.
+therefore, a fisher's exact test was used instead.
+
+```{r}
+# split up support/opposed responses by county
+education_x2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight, q34) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  filter(answer != "") %>% 
+  mutate_all(na_if,"") %>% 
+  drop_na() %>% 
+  group_by(q34, answer) %>% 
+  summarize(weight_count = round(sum(weight)),) 
+
+education_x2_table <- education_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q34")
+```
+
+```{r}
+# Fisher's exact test Is there an association between support for aquaculture and word choice?
+education_fisher_result <- fisher.test(education_x2_table, simulate.p.value=TRUE)
+education_fisher_result
+```
+
+
+
+
+### chi-square test for association between POLIT AFFIL and support for seaweed aquaculture
+
+```{r}
+# split up support/opposed responses by county
+polit_x2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight, q38) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  # combine categories to meet assumptions of test
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~"Opposed",
+    answer == "Somewhat opposed" ~ "Opposed",
+    answer == "Neither opposed nor in support" ~ "Neither opposed nor in support",
+    answer == "Somewhat supportive" ~ "Supportive",
+    answer == "Strongly supportive" ~ "Supportive")) %>%
+  filter(answer != "") %>% 
+  mutate_all(na_if,"") %>% 
+  drop_na() %>% 
+  group_by(q38, answer) %>% 
+  summarize(weight_count = round(sum(weight)),) 
+
+polit_x2_table <- polit_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q38")
+```
+
+```{r}
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+polit_result <- chisq.test(polit_x2_table)
+polit_result
+
+polit_results_tidy <- tidy(polit_result)
+
+#fisher.test(polit_x2_table)
+```
+
+
+### chi-square test for association between SEX and support for seaweed aquaculture
+
+```{r}
+# split up support/opposed responses by county
+sex_x2 <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight, q32) %>% 
+  filter(question == "q2" | 
+         question == "q4" |
+         question == "q6" |
+         question == "q8") %>%
+  mutate(question = case_when( 
+    question == "q2" ~ "q2",
+    question == "q4" ~ "q2",
+    question == "q6" ~ "q2",
+    question == "q8" ~ "q2")) %>% 
+  mutate(q32 = case_when( 
+    q32 == "Man" ~ "Male",
+    q32 == "Woman" ~ "Female")) %>% 
+  filter(answer != "") %>% 
+  mutate_all(na_if,"") %>% 
+  drop_na() %>% 
+  group_by(q32, answer) %>% 
+  summarize(weight_count = round(sum(weight)),) 
+
+sex_x2_table <- sex_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q32")
+```
+
+```{r}
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+sex_result <- chisq.test(sex_x2_table)
+sex_result
+
+sex_results_tidy <- tidy(sex_result)
+```
+
+
+### chi-square test for association between DAYS BY OCEAN and support for seaweed aquaculture
+
+```{r}
+# split up support/opposed responses by county
+ocean_x2 <- survey_data_tidy_sbv_filtered %>% 
+  select(response_id, q15, q2, q4, q6, q8, weight) %>% 
+  #change non-responses to '0 days' because but one non-response corresponds to 'no' response to q14 'do you spend free time by the ocean?'
+  mutate(q15= case_when(
+    q15 == "" ~ "0 days", 
+    TRUE ~ q15)) %>% 
+  #combine support metrics from multiple columns into one columns
+  unite("answer", q2:q8, sep ="", na.rm = TRUE) %>% 
+  #filter out non-response for q2-q8
+  filter(answer != "") %>% 
+  # combine categories to meet assumptions of test
+  mutate(answer = case_when( 
+    answer == "Strongly opposed" ~"Opposed",
+    answer == "Somewhat opposed" ~ "Opposed",
+    answer == "Neither opposed nor in support" ~ "Neither opposed nor in support",
+    answer == "Somewhat supportive" ~ "Supportive",
+    answer == "Strongly supportive" ~ "Supportive")) %>%
+  mutate(answer = fct_relevel(answer, c("Opposed", "Neither opposed nor in support", "Supportive"))) %>% 
+  mutate(q15 = fct_explicit_na(q15, na_level = "0 days")) %>% 
+  mutate(q15 = fct_relevel(q15, c("0 days", "1-5 days", "5-10 days", "10-15 days", "15+ days"))) %>% 
+  group_by(q15, answer) %>% 
+  summarize(weight_count = round(sum(weight),))
+
+ocean_x2_table <- ocean_x2 %>% 
+  pivot_wider(names_from = answer,
+              values_from = weight_count) %>% 
+  mutate_all(~replace(., is.na(.), 0)) %>% 
+  column_to_rownames(var = "q15")
+```
+
+```{r}
+# Chi-square test for independence: Is there an association between support for aquaculture and word choice?
+ocean_result <- chisq.test(ocean_x2_table)
+ocean_result
+
+ocean_results_tidy <- tidy(ocean_result)
+```
+
 

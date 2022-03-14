@@ -1601,8 +1601,8 @@ ggplot(data = polit_affil,
                     #direction = -1) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between political affiliation and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Political Affiliation and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1655,8 +1655,8 @@ ggplot(data = sex,
   #scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between sex and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Sex and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1710,8 +1710,8 @@ ggplot(data = education,
   scale_x_discrete(labels= function(x) str_wrap(x, width = 24)) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between education and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Education and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1764,8 +1764,8 @@ ggplot(data = income,
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between income and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Household Income and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1820,8 +1820,8 @@ ggplot(data = aq_industry,
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relation to aquaculture industry and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Relation to Aquaculture Industry and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1870,8 +1870,8 @@ ggplot(data = county,
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between county and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "County of Residence and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1922,8 +1922,8 @@ ggplot(data = age,
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between age and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Age and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1951,16 +1951,13 @@ occupation <- survey_data_tidy_sbv_long_filtered %>%
     question == "q6" ~ "q2",
     question == "q8" ~ "q2")) %>% 
   select("question", "q39", "answer", "weight") %>% 
+  mutate(answer = fct_relevel(answer, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
   separate(col = "q39", sep = ",", into = c("q39_1","q39_2","q39_3")) %>% 
   group_by(q39_1, answer) %>% 
   summarize(weight_count = sum(weight)) %>% 
   mutate(proportion = (weight_count/sum(weight_count)))
-
-
-# Specify categorical order of questions and answers
-occupation$answer <- factor(occupation$answer, levels = c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support","Somewhat supportive","Strongly supportive"))
 
 occupation$q39_1 <- factor(occupation$q39_1, levels = c("government", "non-profit", "education","commercial fisher","healthcare", "service industry", "other"))
 
@@ -1976,8 +1973,8 @@ ggplot(data = occupation,
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   labs(x = "",
-       y = "proportion of responses",
-       title = "Relationship between occupation sector and support of seaweed aquaculture") +
+       y = "Proportion of Responses",
+       title = "Occupation Sector and Support for Seaweed Aquaculture") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
@@ -1992,37 +1989,54 @@ ggsave(filename = file.path(here("graphs","demo_occupation_sector.png")))
 ```
 
 
-
-
+## Days by the ocean
 ```{r}
-# mean/sd ######## HELP NOT WORKING, can't calc mean
-polit_affil_mean <- survey_data_tidy_sbv_long_filtered %>% 
-  filter(response_type != 3) %>% 
-  filter(question == "q2" | 
-         question == "q4" |
-         question == "q6" |
-         question == "q8") %>%
-  mutate(question = case_when( 
-    question == "q2" ~ "q2",
-    question == "q4" ~ "q2",
-    question == "q6" ~ "q2",
-    question == "q8" ~ "q2")) %>% 
-  filter(answer != "") %>% 
-  mutate(number = case_when( 
-    answer == "Strongly opposed" ~ 1,
-    answer == "Somewhat opposed" ~ 2,
-    answer == "Neither opposed nor in support" ~ 3,
-    answer == "Somewhat supportive" ~ 4,
-    answer == "Strongly supportive" ~ 5)) %>%
-  drop_na() %>% 
-  group_by(q38, answer, number) %>% 
-  summarize(count = n()) %>% 
-  ungroup() %>% 
-  group_by(q38) %>% 
-  mutate(proportion = (count / sum(count)),
-         mean = mean(count/sum(count)),
-         sd = sd(number))
+# split up support/opposed responses by # days spent by ocean
+ocean_time <- survey_data_tidy_sbv_filtered %>% 
+  select(response_id, q15, q2, q4, q6, q8, weight) %>% 
+  #change non-responses to '0 days' because but one non-response corresponds to 'no' response to q14 'do you spend free time by the ocean?'
+  mutate(q15= case_when(
+    q15 == "" ~ "0 days", 
+    TRUE ~ q15)) %>% 
+  #combine support metrics from multiple columns into one columns
+  unite("support", q2:q8, sep ="", na.rm = TRUE) %>% 
+  #filter out non-response for q2-q8
+  filter(support != "") %>% 
+  mutate(support = fct_relevel(support, c("Strongly opposed", "Somewhat opposed", "Neither opposed nor in support", "Somewhat supportive", "Strongly supportive"))) %>% 
+  mutate(q15 = fct_explicit_na(q15, na_level = "0 days")) %>% 
+  mutate(q15 = fct_relevel(q15, c("0 days", "1-5 days", "5-10 days", "10-15 days", "15+ days"))) %>% 
+  group_by(q15, support) %>% 
+  summarize(weight_count = sum(weight)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+ggplot(data = ocean_time, 
+       aes(fill = forcats::fct_rev(support),
+           y = proportion,
+           x = q15)) +
+  geom_bar(position = "stack",
+           stat = "identity",
+           width = 0.5) +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10))+
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF", "#FDAE61","#D7191C","#999999")) +
+  labs(y = "Proportion of Responses",
+       x = "",
+       title = "Monthly Ocean Visitation and Support for Seaweed Aquaculture") +
+       #fill = str_wrap("Support/Opposition", width = 15))+
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.title.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10, angle = 45, hjust = 1),
+        panel.grid = element_line(color = "gray"))
+  
+ggsave(filename = file.path(here("graphs","demo_days_by_ocean.png")))
 ```
+
 
 
 ```{r}
@@ -2195,15 +2209,6 @@ wordcloud_other_comm_forms <- ggplot(data = other_comm_forms,
 
 wordcloud_other_comm_forms
 ```
-
-
-
-
-
-
-
-
-
 
 
 ## Citations: 
