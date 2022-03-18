@@ -197,10 +197,10 @@ support_aq_stacked_bar_weighted <- survey_data_tidy_sbv_long_filtered %>%
          question == "q6" |
          question == "q8") %>%
   mutate(question = case_when( 
-    question == "q2" ~ "seaweed farming",
-    question == "q4" ~ "kelp farming",
-    question == "q6" ~ "seaweed aquaculture",
-    question == "q8" ~ "kelp aquaculture")) %>% 
+    question == "q2" ~ "Seaweed Farming",
+    question == "q4" ~ "Kelp Farming",
+    question == "q6" ~ "Seaweed Aquaculture",
+    question == "q8" ~ "Kelp Aquaculture")) %>% 
   mutate(number = case_when( 
     answer == "Strongly opposed" ~ 1,
     answer == "Somewhat opposed" ~ 2,
@@ -220,10 +220,10 @@ support_aq_stacked_bar_weighted$answer <- factor(support_aq_stacked_bar_weighted
                                                                                         "Neither opposed nor in support",
                                                                                         "Somewhat supportive",
                                                                                         "Strongly supportive"))
-support_aq_stacked_bar_weighted$question <- factor(support_aq_stacked_bar_weighted$question, levels = c("kelp aquaculture",
-                                                                                                        "seaweed aquaculture",
-                                                                                                        "kelp farming",
-                                                                                                        "seaweed farming"))
+support_aq_stacked_bar_weighted$question <- factor(support_aq_stacked_bar_weighted$question, levels = c("Kelp Aquaculture",
+                                                                                                        "Seaweed Aquaculture",
+                                                                                                        "Kelp Farming",
+                                                                                                        "Seaweed Farming"))
 
 # percent stacked barchart
 support_aq_stacked_bar_weighted_graph <-
@@ -240,7 +240,7 @@ support_aq_stacked_bar_weighted_graph <-
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C")) +
   #scale_fill_manual(values =c("#2C7BB6","#2C7BB6","#FFFFBF","#FDAE61","#FDAE61")) +
   labs(x = "",
-       y = "proportion of responses") +
+       y = "Proportion of Responses") +
        #title = "Are you supportive of or opposed to expanding ______ off the California coast?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
@@ -489,10 +489,10 @@ combined_support_answers_weighted_2col <- survey_data_tidy_sbv_long_filtered %>%
          question == "q6" |
          question == "q8") %>%
   mutate(question = case_when( 
-    question == "q2" ~ "farming",
-    question == "q4" ~ "farming",
-    question == "q6" ~ "aquaculture",
-    question == "q8" ~ "aquaculture")) %>% 
+    question == "q2" ~ "Farming",
+    question == "q4" ~ "Farming",
+    question == "q6" ~ "Aquaculture",
+    question == "q8" ~ "Aquaculture")) %>% 
   filter(answer != "") %>% 
   drop_na() %>% 
   group_by(question, answer) %>% 
@@ -860,10 +860,10 @@ ggplot(data = familiarity, aes(x = proportion,
            fill = "#ABD9E9") + 
   #"#2C7BB6","#ABD9E9"
   #geom_text(aes(label = proportion), hjust = 1.5) +
-  scale_x_continuous(labels = scales::percent,
+  scale_x_continuous(labels = scales::label_percent(accuracy = 1L),
                      expand = expansion(mult = c(0, 0))) +
   scale_y_discrete(labels= function(y)str_wrap(y, width = 12)) +
-  labs(x = "proportion of responses",
+  labs(x = "Proportion of Responses",
        y = "",
        title = "How familiar are you with aquaculture?") +
   theme_minimal() +
@@ -1004,8 +1004,8 @@ perception_aq_stacked_bar_weighted <- survey_data_tidy_sbv_long_filtered %>%
   select(question, answer, weight) %>% 
   filter(question == "q12" | question == "q13") %>% 
   mutate(question = case_when( 
-    question == "q12" ~ "aquaculture",
-    question == "q13" ~ "seaweed aquaculture")) %>% 
+    question == "q12" ~ "Aquaculture",
+    question == "q13" ~ "Seaweed Aquaculture")) %>% 
   mutate(number = case_when( 
     answer == "Very Negative" ~ 1,
     answer == "Negative" ~ 2,
@@ -1028,8 +1028,8 @@ perception_aq_stacked_bar_weighted$answer <- factor(perception_aq_stacked_bar_we
                                                                                         "Neutral",
                                                                                         "Positive",
                                                                                         "Very Positive"))
-perception_aq_stacked_bar_weighted$question <- factor(perception_aq_stacked_bar_weighted$question, levels = c("aquaculture",
-                                                                                            "seaweed aquaculture"))
+perception_aq_stacked_bar_weighted$question <- factor(perception_aq_stacked_bar_weighted$question, levels = c("Aquaculture",
+                                                                                            "Seaweed Aquaculture"))
 
 # percent stacked barchart
 ggplot(data = perception_aq_stacked_bar_weighted, 
@@ -1040,17 +1040,19 @@ ggplot(data = perception_aq_stacked_bar_weighted,
            stat = "identity") +
   scale_y_continuous(labels = scales::percent,
                      expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
   scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
   labs(x = "",
-       y = "",
+       y = "Proportion of Responses",
        title = "In general, how positive or negative is your view of ______ ?") +
   theme_minimal() +
   theme(legend.title = element_blank(),
         legend.position = "right",
         axis.line.y = element_line(color = "black", size = 0.5),
-        axis.text.y = element_text(color = "black"),
+        axis.text.y = element_text(color = "black", size = 12),
+        axis.title.y = element_text(color = "black", size = 12),
         axis.line.x = element_line(color = "black", size = 0.5),
-        axis.text.x = element_text(color = "black"),
+        axis.text.x = element_text(color = "black", size = 12),
         panel.grid = element_line(color = "gray"))
 
 ggsave(filename = file.path(here("graphs","weighted_perception.png")))
@@ -1508,9 +1510,157 @@ ggplot(data = graph_2,
   #       fill = guide_legend(nrow=1, byrow=TRUE))
 ```
 
+## used in final report!! (for environmental impacts)
+
+```{r}
+# trust in scientists (Q27_2)
+scientists_trust <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q27_2" | 
+           question == "q27_3") %>% 
+  mutate(question = case_when(
+    question == "q27_2" ~ "I trust scientists who study how we use the environment.",
+    question == "q27_3" ~ "I am concerned about climate change."
+  )) %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = round(sum(weight),)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 
+# Specify categorical order of questions and answers
+scientists_trust$answer <- factor(scientists_trust$answer, levels = c("Don't know", "Strongly Disagree", "Disagree","Neutral","Agree","Strongly Agree"))
 
+# percent stacked barchart
+ggplot(data = scientists_trust, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 25)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(y = "Proportion of Responses",
+       x = "",
+       title = "To what extent do you agree with each of the following statements?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","scientists_trust.png")))
+```
+
+```{r}
+# envi impacts
+envi_impacts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q23_1" | 
+           question == "q23_3" |
+           question == "q26_2" |
+           question == "q26_3") %>% 
+  mutate(question = case_when(
+    question == "q23_1" ~ "Seaweed aquaculture has negative impacts on marine ecosystems.",
+    question == "q23_3" ~ "Seaweed aquaculture infrastructure poses a risk to marine life.",
+    question == "q26_2" ~ "Seaweed aquaculture has fewer risks than shellfish and fish aquaculture.",
+    question == "q26_3" ~ "The benefits of seaweed aquaculture outweigh the potential risks."
+  )) %>% 
+  drop_na() %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = round(sum(weight),)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+envi_impacts$answer <- factor(envi_impacts$answer, levels = c("Don't know", "Strongly Disagree", "Disagree","Neutral","Agree","Strongly Agree"))
+
+envi_impacts$question <- factor(envi_impacts$question, levels = c("Seaweed aquaculture has negative impacts on marine ecosystems.","Seaweed aquaculture infrastructure poses a risk to marine life.","Seaweed aquaculture has fewer risks than shellfish and fish aquaculture.","The benefits of seaweed aquaculture outweigh the potential risks."))
+
+# percent stacked barchart
+ggplot(data = envi_impacts, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 25)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(y = "Proportion of Responses",
+       x = "",
+       title = "To what extent do you agree with each of the following statements?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","envi_impacts.png")),
+       width = 10, height = 7)
+```
+
+```{r}
+# econ impacts
+econ_impacts <- survey_data_tidy_sbv_long_filtered %>% 
+  select(question, answer, weight) %>% 
+  filter(question == "q24_4" | 
+           question == "q25_1" |
+           question == "q25_2" |
+           question == "q25_4" |
+           question == "q25_5") %>% 
+  mutate(question = case_when(
+    question == "q24_4" ~ "Aquaculture will be an important food supply as climate change progresses.",
+    question == "q25_1" ~ "Seaweed aquaculture has a positive impact on the local economy",
+    question == "q25_2" ~ "Seaweed aquaculture lowers the price of seafood.",
+    question == "q25_4" ~ "Seaweed aquaculture interferes with commercial and recreational fishing.",
+    question == "q25_5" ~ "Seaweed aquaculture interferes with tourism/recreation.")) %>%
+  drop_na(answer) %>% 
+  group_by(question, answer) %>% 
+  summarize(weight_count = round(sum(weight),)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
+
+
+# Specify categorical order of questions and answers
+econ_impacts$answer <- factor(econ_impacts$answer, levels = c("Don't know", "Strongly Disagree", "Disagree","Neutral","Agree","Strongly Agree"))
+
+econ_impacts$question <- factor(econ_impacts$question, levels = c("Aquaculture will be an important food supply as climate change progresses.","Seaweed aquaculture has a positive impact on the local economy","Seaweed aquaculture lowers the price of seafood.", "Seaweed aquaculture interferes with commercial and recreational fishing.","Seaweed aquaculture interferes with tourism/recreation."))
+
+# percent stacked barchart
+ggplot(data = econ_impacts, 
+       aes(fill = forcats::fct_rev(answer),
+           y = proportion,
+           x = question)) +
+  geom_bar(position = "stack",
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent,
+                     expand = expansion(mult = c(0, 0))) +
+  scale_x_discrete(labels= function(x) str_wrap(x, width = 25)) +
+  scale_fill_manual(values =c("#2C7BB6","#ABD9E9","#FFFFBF","#FDAE61","#D7191C","#C0C0C0")) +
+  labs(y = "Proportion of Responses",
+       x = "",
+       title = "To what extent do you agree with each of the following statements?") +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = "right",
+        axis.line.y = element_line(color = "black", size = 0.5),
+        axis.text.y = element_text(color = "black", size = 10),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.text.x = element_text(color = "black", size = 10),
+        panel.grid = element_line(color = "gray"))
+
+ggsave(filename = file.path(here("graphs","econ_impacts.png")),
+       width = 12, height = 7)
+```
 
 
 
@@ -1573,6 +1723,9 @@ polit_affil <- survey_data_tidy_sbv_long_filtered %>%
     question == "q6" ~ "q2",
     question == "q8" ~ "q2")) %>% 
   select("question", "q38", "answer", "weight") %>% 
+  mutate(q38 = case_when( 
+    q38 == "Indpendent" ~ "Independent",
+    TRUE ~ q38)) %>% 
   filter(answer != "") %>% 
   #drop_na() %>% 
   group_by(q38, answer) %>% 
@@ -2111,8 +2264,8 @@ neutral_residents <- survey_data_tidy_sbv_long_filtered %>%
 # q29_6 - research
 
 # make new subset of data
-comm_data <- survey_data_tidy %>% 
-  select(q29_1:q29_6) %>% 
+comm_data <- survey_data_tidy_sbv_filtered %>% 
+  select("q29_1", "q29_2", "q29_3", "q29_4", "q29_5", "q29_6", "weight") %>% 
   mutate_if(is.character,as.numeric) %>% 
   summarize_all(mean, na.rm = TRUE) # calculate mean rank score for each answer choice
   #column_to_rownames(q29_1, "policy")

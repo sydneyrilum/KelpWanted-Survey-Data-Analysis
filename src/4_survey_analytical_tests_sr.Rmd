@@ -589,11 +589,16 @@ k_p_weighted <- survey_data_tidy_sbv_long_filtered %>%
   filter(question == "q10"|
            question == "q13") %>% 
   #switch to wide format with response id as the link
-  spread(question, answer) %>% 
+  spread(question, answer) %>%
+  #mutate(q13 = case_when(
+  #  q13 == "Very Negative" ~ "Negative",
+  #  q13 == "Very Positive" ~ "Positive",
+  #  TRUE ~ q13)) %>% 
   mutate(q13 = fct_relevel(q13, c(c("Very Negative", "Negative","Neutral","Positive", "Very Positive", "Unsure/Not familiar")))) %>% 
+  #mutate(q13 = fct_relevel(q13, c(c("Negative","Neutral","Positive", "Unsure/Not familiar")))) %>% 
   mutate(q10 = fct_relevel(q10, c(c("Very familiar", "Basic understanding", "Heard of it, but don't know details", "Never heard of it")))) %>%  
   group_by(q13, q10) %>% 
-  summarize(weight_count = sum(weight)) %>% 
+  summarize(weight_count = round(sum(weight),)) %>% 
   mutate(proportion = (weight_count/sum(weight_count)))
 
 ## graph
@@ -602,7 +607,8 @@ ggplot(k_p_weighted, aes(fill= q13, x = q10, y = weight_count))+
   scale_x_discrete(labels= function(x) str_wrap(x, width = 10)) +
   scale_y_continuous(expand = expansion(mult = c(0.005, 0))) +
   scale_fill_manual(values =c("#D7191C", "#FDAE61", "#FFFFBF", "#ABD9E9","#2C7BB6", "#999999")) +
-  labs(y = "Count",
+  #scale_fill_manual(values =c("#FDAE61", "#FFFFBF", "#ABD9E9", "#999999")) +
+  labs(y = "Response Count",
        x = "Familiarity with Aquaculture",
        title = "Relationship Between Familiarity and Perception",
        fill = "Perception of \nSeaweed Aquaculture") + 
@@ -616,7 +622,6 @@ ggplot(k_p_weighted, aes(fill= q13, x = q10, y = weight_count))+
 ggsave(filename = file.path(here("graphs","familiarity_&_perception.png")))
 ```
 
-
 One key assumption of the chi-square test is that 80% of the cells must have an expected value of 5 or greater. Only 14 of the 24 cells meet this requirement (58%), therefore violating the assumptions of the chi-square test. We will use the maximum liklihood chi-square test to also understand the relationship between the two variables. 
 
 ```{r 10 v. 13 chi squared test, violates assumptions!!!}
@@ -629,11 +634,13 @@ k_p_ct_table <- k_p_weighted %>%
   column_to_rownames(var = "q13")
 
 # Chi-square test for independence: Is there an association between familiarity and perception?
-knowledge_perception_weight_x2 <- chisq.test(k_p_ct_table)
-knowledge_perception_weight_x2
+#knowledge_perception_weight_x2 <- chisq.test(k_p_ct_table)
+#knowledge_perception_weight_x2
 
 # Get the chi-square test results to call outputs in-line
-k_p_x2_tidy <- tidy(knowledge_perception_weight_x2)
+#k_p_x2_tidy <- tidy(knowledge_perception_weight_x2)
+
+fisher.test(k_p_ct_table, simulate.p.value=TRUE)
 ```
 
 
@@ -930,15 +937,15 @@ coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
 
 # heatmap plots
 levelplot(phat1, col.regions= coul,
-          xlab = "perception",
-          ylab = "support aquaculture",
-          main = "Predicted Probabilities",
+          xlab = "Perception",
+          ylab = "Level of Support",
+          main = "Aquaculture",
           at = seq(min(0), max(1), length.out=20)) # make scale 0 to 1
 
 levelplot(phat2, col.regions= coul,
-          xlab = "perception",
-          ylab = "support farming",
-          main = "Predicted Probabilities",
+          xlab = "Perception",
+          ylab = "Level of Support",
+          main = "Farming",
           at = seq(min(0), max(1), length.out=20))
 
 phat1 %>% 
@@ -1084,15 +1091,15 @@ coul <- colorRampPalette(brewer.pal(8, "Blues"))(25)
 
 # heatmap plots
 levelplot(phat3, col.regions= coul,
-          xlab = "familiarity",
-          ylab = "support aquaculture",
-          main = "Predicted Probabilities",
+          xlab = "Familiarity",
+          ylab = "Level of Support",
+          main = "Aquaculture",
           at = seq(min(0), max(1), length.out=20))
 
 levelplot(phat4, col.regions= coul,
-          xlab = "familiarity",
-          ylab = "support farming",
-          main = "Predicted Probabilities",
+          xlab = "Familiarity",
+          ylab = "Level of Support",
+          main = "Farming",
           at = seq(min(0), max(1), length.out=20))
 
 phat3 %>% 
@@ -1208,8 +1215,8 @@ coul <- colorRampPalette(brewer.pal(8, "Blues"))(100)
 
 #heatmap
 levelplot(phat5, col.regions= coul,
-          xlab = "familiarity",
-          ylab = "perception",
+          xlab = "Familiarity",
+          ylab = "Perception",
           main = "Predicted Probabilities",
           at = seq(min(0), max(1), length.out=20)) 
 
@@ -1325,7 +1332,8 @@ education_x2 <- survey_data_tidy_sbv_long_filtered %>%
   mutate_all(na_if,"") %>% 
   drop_na() %>% 
   group_by(q34, answer) %>% 
-  summarize(weight_count = round(sum(weight)),) 
+  summarize(weight_count = round(sum(weight)),) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 education_x2_table <- education_x2 %>% 
   pivot_wider(names_from = answer,
@@ -1369,7 +1377,8 @@ polit_x2 <- survey_data_tidy_sbv_long_filtered %>%
   mutate_all(na_if,"") %>% 
   drop_na() %>% 
   group_by(q38, answer) %>% 
-  summarize(weight_count = round(sum(weight)),) 
+  summarize(weight_count = round(sum(weight)),) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 polit_x2_table <- polit_x2 %>% 
   pivot_wider(names_from = answer,
@@ -1454,7 +1463,8 @@ ocean_x2 <- survey_data_tidy_sbv_filtered %>%
   mutate(q15 = fct_explicit_na(q15, na_level = "0 days")) %>% 
   mutate(q15 = fct_relevel(q15, c("0 days", "1-5 days", "5-10 days", "10-15 days", "15+ days"))) %>% 
   group_by(q15, answer) %>% 
-  summarize(weight_count = round(sum(weight),))
+  summarize(weight_count = round(sum(weight),)) %>% 
+  mutate(proportion = (weight_count/sum(weight_count)))
 
 ocean_x2_table <- ocean_x2 %>% 
   pivot_wider(names_from = answer,
